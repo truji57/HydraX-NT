@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>NT8Bridge</AssemblyName>
+    <RootNamespace>HydraXNT</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="NinjaTrader.Custom">
+      <HintPath>C:\Program Files\NinjaTrader 8\bin\Custom\NinjaTrader.Custom.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
