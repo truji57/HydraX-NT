@@ -27,18 +27,12 @@ namespace HydraXNT
     {
         private TcpListener _server;
         private bool _running = true;
-        private Account _account;
 
         protected override void OnWindowCreated()
         {
-            _account = Account.All.FirstOrDefault(a => a.Name == "Sim101" || a.Name == "Playback101")
-                       ?? Account.All.FirstOrDefault();
-            if (_account == null)
-            {
-                Log("HydraX-NT: No trading account found", LogLevel.Error);
-                return;
-            }
-            Log($"HydraX-NT: Using account {_account.Name}", LogLevel.Information);
+            Log($"HydraX-NT: {Account.All.Count()} accounts available", LogLevel.Information);
+            foreach (var a in Account.All)
+                Log($"  - {a.Name} ({a.Provider})", LogLevel.Information);
             Task.Run(() => StartServer());
         }
 
@@ -81,10 +75,10 @@ namespace HydraXNT
                     switch (action)
                     {
                         case "ACCOUNT":
-                            response = GetAccountInfo();
+                            response = GetAccountInfo(cmd);
                             break;
                         case "POSITIONS":
-                            response = GetPositions();
+                            response = GetPositions(cmd);
                             break;
                         case "OPEN":
                             response = OpenPosition(cmd);

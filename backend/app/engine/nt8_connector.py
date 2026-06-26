@@ -62,7 +62,7 @@ class NT8Connector:
 
     def open_position(self, symbol: str, contracts: int, direction: str,
                       sl: float = 0, tp: float = 0, magic: int = 0,
-                      comment: str = "") -> dict | None:
+                      comment: str = "", account: str = "") -> dict | None:
         return self._send({
             "action": "OPEN",
             "symbol": symbol,
@@ -72,12 +72,14 @@ class NT8Connector:
             "tp": tp,
             "magic": magic,
             "comment": comment,
+            "account": account,
         })
 
-    def close_position(self, position_id: str) -> dict | None:
+    def close_position(self, position_id: str, account: str = "") -> dict | None:
         return self._send({
             "action": "CLOSE",
             "position_id": position_id,
+            "account": account,
         })
 
     def modify_position(self, position_id: str, sl: float = 0, tp: float = 0) -> dict | None:

@@ -223,7 +223,7 @@ def nt8_slave_executor(account_id: str, name: str, bridge_host: str, bridge_port
             if max_contracts > 0 and contracts > max_contracts:
                 contracts = max_contracts
 
-            result = conn.open_position(symbol, contracts, direction, sl, tp, magic_number)
+            result = conn.open_position(symbol, contracts, direction, sl, tp, magic_number, account=display)
             if result and result.get("ok"):
                 slave_ticket = result.get("position_id", 0)
                 confirm_open(master_ticket, account_id, slave_ticket)
@@ -246,7 +246,7 @@ def nt8_slave_executor(account_id: str, name: str, bridge_host: str, bridge_port
                 continue
 
             nt8_pid = payload.get("nt8_position_id", str(slave_ticket))
-            result = conn.close_position(str(nt8_pid))
+            result = conn.close_position(str(nt8_pid), account=display)
             if result and result.get("ok"):
                 mark_closed(master_ticket, account_id)
                 logger.info(f"{display}: CLOSE OK {payload.get('symbol','?')}")
