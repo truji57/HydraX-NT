@@ -369,7 +369,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 continue
 
             nt8_pid = payload.get("nt8_position_id", str(slave_ticket))
-            result = conn.close_position(str(nt8_pid), account=login)
+            result = conn.close_position(str(nt8_pid), payload.get("symbol", ""), account=login)
             if result and result.get("ok"):
                 mark_closed(master_ticket, account_id)
                 _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),

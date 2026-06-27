@@ -76,10 +76,11 @@ class NT8Connector:
             "account": account,
         })
 
-    def close_position(self, position_id: str, account: str = "") -> dict | None:
+    def close_position(self, position_id: str, symbol: str = "", account: str = "") -> dict | None:
         return self._send({
             "action": "CLOSE",
             "position_id": position_id,
+            "symbol": symbol,
             "account": account,
         })
 
