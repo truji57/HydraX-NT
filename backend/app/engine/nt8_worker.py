@@ -236,7 +236,6 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                        magic_number: int, queue: mp.Queue, stop_flag: mp.Event,
                        event_queue: mp.Queue):
     display = name or f"nt8-slave"
-    print(f"[TRACE] Slave {display} STARTING login={login}", flush=True)
 
     if not autocopy_enable:
         return
@@ -367,16 +366,13 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         elif action == "CLOSE":
             master_ticket = payload["position_ticket"]
             slave_ticket = get_slave_ticket(master_ticket, account_id)
-            print(f"[TRACE] CLOSE: master_ticket={master_ticket} slave_ticket={slave_ticket} symbol={payload.get('symbol','?')}", flush=True)
             if not slave_ticket:
                 logger.warning(f"{display}: no mapping for master_ticket={master_ticket}")
                 continue
 
             nt8_pid = payload.get("nt8_position_id", str(slave_ticket))
             symbol = payload.get("symbol", "")
-            print(f"[TRACE] CLOSE: calling close_position(symbol={symbol}, account={login})", flush=True)
             result = conn.close_position(str(nt8_pid), symbol, account=login)
-            print(f"[TRACE] CLOSE: result={result}", flush=True)
             if result and result.get("ok"):
                 mark_closed(master_ticket, account_id)
                 _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),
