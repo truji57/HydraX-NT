@@ -191,6 +191,7 @@ namespace NinjaTrader.NinjaScript.AddOns
             var result = new Dictionary<string, object> { ["ok"] = true, ["orders"] = list };
             return _json.Serialize(result);
         }
+        private string GetPositions(Dictionary<string, object> cmd)
         {
             var acc = GetAccount(cmd);
             if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
