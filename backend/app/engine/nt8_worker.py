@@ -2,6 +2,8 @@
 import time
 import multiprocessing as mp
 
+from app.database import SessionLocal
+from app.models.account import SlaveConfig
 from app.engine.nt8_connector import NT8Connector
 from app.engine.ticket_mapper import (
     reserve_pending, confirm_open, mark_pending_error, mark_closed, get_slave_ticket,
@@ -196,6 +198,37 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
 
     logger.info(f"{display}: connected to NT8 bridge")
 
+    _config = {
+        "risk_mode": risk_mode, "risk_percent": risk_percent, "risk_usd": risk_usd,
+        "fixed_contracts": fixed_contracts, "lot_multiplier": lot_multiplier,
+        "max_contracts": max_contracts, "max_positions": max_positions,
+        "autocopy_enable": autocopy_enable, "copy_sl": copy_sl,
+        "copy_tp": copy_tp, "inverse_copy": inverse_copy,
+        "delay_sec": delay_sec, "magic_number": magic_number,
+    }
+
+    def reload_config():
+        try:
+            db = SessionLocal()
+            cfg = db.query(SlaveConfig).filter(SlaveConfig.account_id == account_id).first()
+            db.close()
+            if cfg:
+                _config["risk_mode"] = cfg.risk_mode.value if cfg.risk_mode else "FIXED"
+                _config["risk_percent"] = cfg.risk_percent or 0.5
+                _config["risk_usd"] = cfg.risk_usd or 50.0
+                _config["fixed_contracts"] = cfg.fixed_contracts or 1
+                _config["lot_multiplier"] = cfg.lot_multiplier or 1.0
+                _config["max_contracts"] = cfg.max_contracts or 100
+                _config["max_positions"] = cfg.max_positions or 100
+                _config["autocopy_enable"] = cfg.autocopy_enable if cfg.autocopy_enable is not None else True
+                _config["copy_sl"] = cfg.copy_sl if cfg.copy_sl is not None else True
+                _config["copy_tp"] = cfg.copy_tp if cfg.copy_tp is not None else True
+                _config["inverse_copy"] = cfg.inverse_copy or False
+                _config["delay_sec"] = cfg.delay_sec or 0.0
+                _config["magic_number"] = cfg.magic_number or 0
+        except Exception:
+            pass
+
     while not stop_flag.is_set():
         cmd = None
         try:
@@ -207,6 +240,11 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             continue
         if stop_flag.is_set():
             break
+
+        reload_config()
+
+        if not _config["autocopy_enable"]:
+            continue
 
         action = cmd.get("action")
         payload = cmd.get("payload", {})
@@ -223,40 +261,40 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
 
             symbol = payload.get("symbol", "")
             direction = payload.get("direction", "BUY")
-            if inverse_copy:
+            if _config["inverse_copy"]:
                 direction = "SELL" if direction.upper() == "BUY" else "BUY"
 
             reserve_pending(master_ticket, master_account_id, account_id,
                             symbol, payload.get("contracts", 1), payload.get("price", 0), direction)
 
-            if delay_sec > 0:
-                for _ in range(int(delay_sec * 10)):
+            if _config["delay_sec"] > 0:
+                for _ in range(int(_config["delay_sec"] * 10)):
                     if stop_flag.is_set():
                         break
                     time.sleep(0.1)
                 if stop_flag.is_set():
                     break
 
-            sl = payload.get("sl", 0) if copy_sl else 0
-            tp = payload.get("tp", 0) if copy_tp else 0
+            sl = payload.get("sl", 0) if _config["copy_sl"] else 0
+            tp = payload.get("tp", 0) if _config["copy_tp"] else 0
 
-            if risk_mode == "FIXED":
-                contracts = calculate_contracts_fixed(fixed_contracts)
-            elif risk_mode == "RATIO":
-                contracts = calculate_contracts_ratio(payload.get("contracts", 1), lot_multiplier)
-            elif risk_mode == "RISK_PERCENT":
+            if _config["risk_mode"] == "FIXED":
+                contracts = calculate_contracts_fixed(_config["fixed_contracts"])
+            elif _config["risk_mode"] == "RATIO":
+                contracts = calculate_contracts_ratio(payload.get("contracts", 1), _config["lot_multiplier"])
+            elif _config["risk_mode"] == "RISK_PERCENT":
                 contracts = payload.get("contracts", 1)
-            elif risk_mode == "RISK_USD":
+            elif _config["risk_mode"] == "RISK_USD":
                 contracts = payload.get("contracts", 1)
-            elif risk_mode == "BALANCE_PROP":
+            elif _config["risk_mode"] == "BALANCE_PROP":
                 contracts = payload.get("contracts", 1)
             else:
                 contracts = payload.get("contracts", 1)
 
-            if max_contracts > 0 and contracts > max_contracts:
-                contracts = max_contracts
+            if _config["max_contracts"] > 0 and contracts > _config["max_contracts"]:
+                contracts = _config["max_contracts"]
 
-            result = conn.open_position(symbol, contracts, direction, sl, tp, magic_number, account=login)
+            result = conn.open_position(symbol, contracts, direction, sl, tp, _config["magic_number"], account=login)
             if result and result.get("ok"):
                 slave_ticket = result.get("position_id", 0)
                 confirm_open(master_ticket, account_id, slave_ticket)
