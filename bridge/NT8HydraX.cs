@@ -1,13 +1,12 @@
 /*
- * NT8HydraX.cs — NinjaTrader 8 Add-On
+ * NT8HydraX.cs — NinjaTrader 8 Add-On (compatible .NET Framework 4.8)
  * 
- * Abre un servidor TCP en localhost:5555 directamente dentro de NT8.
- * Recibe comandos JSON y ejecuta operaciones usando la API interna de NT8.
+ * Servidor TCP en localhost:5555 que recibe JSON y ejecuta en NT8.
  * 
- * INSTALACION:
- *   1. Copia este archivo a: Documents\NinjaTrader 8\bin\Custom\AddOns\
- *   2. En NT8: New > NinjaScript Editor > Compile (F5)
- *   3. El add-on se carga automaticamente. Veras "HydraX: X accounts" en el log.
+ * INSTALAR:
+ *   1. Copiar a Documents\NinjaTrader 8\bin\Custom\AddOns\
+ *   2. NT8 > New > NinjaScript Editor > F5 (Compile)
+ *   3. Reiniciar NT8
  */
 
 #region Using declarations
@@ -18,9 +17,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
-using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NinjaTrader.Cbi;
 using NinjaTrader.Data;
 using NinjaTrader.NinjaScript;
@@ -39,39 +38,35 @@ namespace NinjaTrader.NinjaScript.AddOns
             if (State == State.SetDefaults)
             {
                 Name = "NT8HydraX";
-                IsConfigured = true;
             }
             else if (State == State.Terminated)
             {
-                _server?.Stop();
+                try { _server?.Stop(); }
+                catch { }
             }
         }
 
         protected override void OnWindowCreated()
         {
-            // Check if we have accounts
             if (Account.All.Count == 0)
             {
-                Log("HydraX: No trading accounts found in NT8. Add accounts in the Accounts tab.", LogLevel.Warning);
+                Log("HydraX: No accounts found", LogLevel.Warning);
                 return;
             }
 
-            Log($"HydraX: {Account.All.Count()} accounts available on port 5555", LogLevel.Information);
+            Log($"HydraX: {Account.All.Count()} accounts on port 5555", LogLevel.Information);
             foreach (var a in Account.All)
-                Log($"  - {a.Name} (Balance: {a.Get(AccountItem.CashValue, Currency.UsDollar):F2})", LogLevel.Information);
-
-            _serverThread = new Thread(StartServer)
             {
-                IsBackground = true,
-                Name = "HydraX-Server"
-            };
-            _serverThread.Start();
-        }
+                try
+                {
+                    double bal = a.Get(AccountItem.CashValue, Currency.UsDollar);
+                    Log($"  {a.Name} (Balance: {bal:F2})", LogLevel.Information);
+                }
+                catch { }
+            }
 
-        protected override void OnWindowDestroyed()
-        {
-            _server?.Stop();
-            Log("HydraX: Server stopped", LogLevel.Information);
+            _serverThread = new Thread(StartServer) { IsBackground = true, Name = "HydraX" };
+            _serverThread.Start();
         }
 
         private void StartServer()
@@ -80,26 +75,21 @@ namespace NinjaTrader.NinjaScript.AddOns
             {
                 _server = new TcpListener(IPAddress.Loopback, 5555);
                 _server.Start();
-                Log("HydraX: TCP server started on port 5555", LogLevel.Information);
+                Log("HydraX: TCP ready on :5555", LogLevel.Information);
 
                 while (_server != null)
                 {
-                    var client = _server.AcceptTcpClient();
-                    var t = new Thread(() => HandleClient(client))
+                    try
                     {
-                        IsBackground = true,
-                        Name = "HydraX-Client"
-                    };
-                    t.Start();
+                        var client = _server.AcceptTcpClient();
+                        new Thread(() => HandleClient(client)) { IsBackground = true }.Start();
+                    }
+                    catch { break; }
                 }
-            }
-            catch (SocketException)
-            {
-                // Server stopped
             }
             catch (Exception ex)
             {
-                Log($"HydraX: Server error: {ex.Message}", LogLevel.Error);
+                Log($"HydraX: Error: {ex.Message}", LogLevel.Error);
             }
         }
 
@@ -107,17 +97,17 @@ namespace NinjaTrader.NinjaScript.AddOns
         {
             using (client)
             using (var stream = client.GetStream())
-            using (var reader = new StreamReader(stream, Encoding.UTF8))
-            using (var writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true, NewLine = "\n" })
             {
+                var reader = new StreamReader(stream, Encoding.UTF8);
+                var writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true, NewLine = "\n" };
                 try
                 {
-                    var line = reader.ReadLine();
+                    string line = reader.ReadLine();
                     if (string.IsNullOrEmpty(line)) return;
 
-                    var cmd = JsonDocument.Parse(line).RootElement;
-                    var action = cmd.GetProperty("action").GetString();
-                    var response = "{}";
+                    JObject cmd = JObject.Parse(line);
+                    string action = (string)cmd["action"];
+                    string response = "{}";
 
                     switch (action)
                     {
@@ -131,40 +121,35 @@ namespace NinjaTrader.NinjaScript.AddOns
                 }
                 catch (Exception ex)
                 {
-                    Log($"HydraX: Client error: {ex.Message}", LogLevel.Warning);
+                    Log($"HydraX: {ex.Message}", LogLevel.Warning);
                 }
             }
         }
 
-        private Account GetAccount(JsonElement cmd)
+        private Account GetAccount(JObject cmd)
         {
-            if (cmd.TryGetProperty("account", out var accName))
-                return Account.All.FirstOrDefault(a => a.Name.Equals(accName.GetString(), StringComparison.OrdinalIgnoreCase));
+            string accName = (string)cmd["account"];
+            if (!string.IsNullOrEmpty(accName))
+                return Account.All.FirstOrDefault(a => a.Name == accName);
             return Account.All.FirstOrDefault();
         }
 
-        private string GetAccountInfo(JsonElement cmd)
+        private string GetAccountInfo(JObject cmd)
         {
             var acc = GetAccount(cmd);
             if (acc == null)
-                return $"{{\"ok\":false,\"error\":\"Account not found. Available: {string.Join(", ", Account.All.Select(a => a.Name))}\"}}";
+                return "{\"ok\":false,\"error\":\"No account\"}";
 
             try
             {
-                double balance = acc.Get(AccountItem.CashValue, Currency.UsDollar);
-                double equity = acc.Get(AccountItem.CashValue, Currency.UsDollar);
-                double pnl = acc.Get(AccountItem.RealizedProfitLoss, Currency.UsDollar);
-                int positions = acc.Positions.Count(p => p.Quantity != 0);
-
-                return JsonSerializer.Serialize(new
+                var result = new JObject
                 {
-                    ok = true,
-                    name = acc.Name,
-                    balance,
-                    equity,
-                    pnl,
-                    positions,
-                });
+                    ["ok"] = true,
+                    ["name"] = acc.Name,
+                    ["balance"] = acc.Get(AccountItem.CashValue, Currency.UsDollar),
+                    ["positions"] = acc.Positions.Count(p => p.Quantity != 0),
+                };
+                return result.ToString(Formatting.None);
             }
             catch (Exception ex)
             {
@@ -172,64 +157,60 @@ namespace NinjaTrader.NinjaScript.AddOns
             }
         }
 
-        private string GetPositions(JsonElement cmd)
+        private string GetPositions(JObject cmd)
         {
             var acc = GetAccount(cmd);
-            if (acc == null) return "{\"ok\":false,\"error\":\"Account not found\"}";
+            if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
 
-            var posList = acc.Positions
-                .Where(p => p.Quantity != 0)
-                .Select(p => new
+            var list = new JArray();
+            foreach (var p in acc.Positions.Where(p => p.Quantity != 0))
+            {
+                list.Add(new JObject
                 {
-                    symbol = p.Instrument.FullName,
-                    direction = p.MarketPosition == MarketPosition.Long ? "BUY" : "SELL",
-                    contracts = Math.Abs(p.Quantity),
-                    entry_price = p.AveragePrice,
-                    pnl = acc.Get(AccountItem.UnrealizedProfitLoss, Currency.UsDollar),
-                    id = $"{p.Instrument.FullName}_{p.AveragePrice}_{DateTime.Now.Ticks}",
-                }).ToList();
+                    ["symbol"] = p.Instrument.FullName,
+                    ["direction"] = p.MarketPosition == MarketPosition.Long ? "BUY" : "SELL",
+                    ["contracts"] = Math.Abs(p.Quantity),
+                    ["entry_price"] = p.AveragePrice,
+                    ["id"] = $"{p.Instrument.FullName}_{p.AveragePrice}_{DateTime.Now.Ticks}",
+                });
+            }
 
-            return JsonSerializer.Serialize(new { ok = true, positions = posList });
+            var result = new JObject { ["ok"] = true, ["positions"] = list };
+            return result.ToString(Formatting.None);
         }
 
-        private string OpenPosition(JsonElement cmd)
+        private string OpenPosition(JObject cmd)
         {
+            var acc = GetAccount(cmd);
+            if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
+
             try
             {
-                var acc = GetAccount(cmd);
-                if (acc == null)
-                    return $"{{\"ok\":false,\"error\":\"Account not found\"}}";
-
-                string symbol = cmd.GetProperty("symbol").GetString();
-                int contracts = cmd.GetProperty("contracts").GetInt32();
-                string direction = cmd.GetProperty("direction").GetString();
-                double sl = cmd.TryGetProperty("sl", out var s) && s.ValueKind != JsonValueKind.Null ? s.GetDouble() : 0;
-                double tp = cmd.TryGetProperty("tp", out var t) && t.ValueKind != JsonValueKind.Null ? t.GetDouble() : 0;
+                string symbol = (string)cmd["symbol"];
+                int contracts = (int)cmd["contracts"];
+                string direction = ((string)cmd["direction"]).ToUpper();
 
                 var instrument = Instrument.GetInstrument(symbol);
                 if (instrument == null)
-                    return $"{{\"ok\":false,\"error\":\"Symbol '{symbol}' not found in NT8 instrument list\"}}";
+                    return $"{{\"ok\":false,\"error\":\"Symbol '{symbol}' not found\"}}";
 
-                var orderAction = direction.Equals("BUY", StringComparison.OrdinalIgnoreCase)
-                    ? OrderAction.Buy : OrderAction.Sell;
+                var orderAction = direction == "BUY" ? OrderAction.Buy : OrderAction.Sell;
 
-                // Submit market order
                 acc.CreateOrder(
                     instrument,
-                    OrderType.Market,
                     orderAction,
                     OrderType.Market,
+                    TimeInForce.Day,
                     contracts,
-                    0, 0,
+                    0,
+                    0,
                     string.Empty,
                     "HydraX",
                     null
                 );
 
-                // Set SL/TP if needed - requires separate orders after fill
-                Log($"HydraX: OPEN {direction} {contracts}x {symbol} on {acc.Name}", LogLevel.Information);
-
-                return $"{{\"ok\":true,\"position_id\":\"{symbol}_{DateTime.Now.Ticks}\",\"symbol\":\"{symbol}\",\"contracts\":{contracts}}}";
+                Log($"HydraX: {direction} {contracts}x {symbol} on {acc.Name}", LogLevel.Information);
+                return $"{{\"ok\":true,\"position_id\":\"{symbol}_{DateTime.Now.Ticks}\"}}";
             }
             catch (Exception ex)
             {
@@ -238,31 +219,33 @@ namespace NinjaTrader.NinjaScript.AddOns
             }
         }
 
-        private string ClosePosition(JsonElement cmd)
+        private string ClosePosition(JObject cmd)
         {
+            var acc = GetAccount(cmd);
+            if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
+
             try
             {
-                var acc = GetAccount(cmd);
-                if (acc == null) return "{\"ok\":false,\"error\":\"Account not found\"}";
-
-                string symbol = null;
-                if (cmd.TryGetProperty("symbol", out var s))
-                    symbol = s.GetString();
+                string symbol = (string)cmd["symbol"];
+                int closed = 0;
 
                 var positions = acc.Positions.Where(p => p.Quantity != 0);
                 if (!string.IsNullOrEmpty(symbol))
                     positions = positions.Where(p => p.Instrument.FullName == symbol);
 
-                int closed = 0;
                 foreach (var pos in positions.ToList())
                 {
+                    var orderAction = pos.MarketPosition == MarketPosition.Long
+                        ? OrderAction.Sell : OrderAction.Buy;
+
                     acc.CreateOrder(
                         pos.Instrument,
+                        orderAction,
                         OrderType.Market,
-                        pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.Buy,
-                        OrderType.Market,
+                        TimeInForce.Day,
                         Math.Abs(pos.Quantity),
-                        0, 0,
+                        0,
+                        0,
                         string.Empty,
                         "HydraX Close",
                         null
