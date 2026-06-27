@@ -22,5 +22,5 @@ def get_db():
 
 
 def init_db():
-    from app.models import account, ticket_map, trade_log, symbol_map, server  # noqa: F401
+    from app.models import account, ticket_map, trade_log  # noqa: F401
     Base.metadata.create_all(bind=engine)
