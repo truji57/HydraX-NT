@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, ArrowLeftRight, History, Settings, Play, Square, Activity, Layers } from 'lucide-react';
+import { LayoutDashboard, Users, ArrowLeftRight, History, Settings, Play, Square, Layers } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store';
 import { api } from '../../lib/api';
@@ -27,11 +27,9 @@ export function Sidebar() {
 
   return (
     <aside className="w-56 h-screen border-r border-zinc-800 bg-zinc-950 flex flex-col">
-      <div className="p-4 border-b border-zinc-800">
-        <h1 className="text-2xl font-bold text-emerald-400 flex items-center gap-2">
-          <Activity size={26} />
-          HydraX-NT
-        </h1>
+      <div className="p-4 border-b border-zinc-800 text-center">
+        <img src="/logo.png" alt="HydraX" className="h-24 w-24 mx-auto mb-2" />
+        <h1 className="text-xl font-bold text-emerald-400">HydraX-NT</h1>
         <span className="text-xs text-zinc-500">NinjaTrader Copier v{version || "..."}</span>
       </div>
 
