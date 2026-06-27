@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:3000"]
     SERVER_HOST: str = "0.0.0.0"
-    SERVER_PORT: int = 8001
+    SERVER_PORT: int = 8002
 
     class Config:
         env_file = ".env"
