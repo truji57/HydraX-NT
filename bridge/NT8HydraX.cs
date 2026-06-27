@@ -206,17 +206,9 @@ namespace NinjaTrader.NinjaScript.AddOns
                     (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)))
                 {
                     if (o.OrderType == OrderType.StopMarket && o.StopPrice > 0)
-                    {
-                        if ((p.MarketPosition == MarketPosition.Long && o.OrderAction == OrderAction.Sell) ||
-                            (p.MarketPosition == MarketPosition.Short && o.OrderAction == OrderAction.Buy))
-                            sl = o.StopPrice;
-                    }
+                        sl = o.StopPrice;
                     if (o.OrderType == OrderType.Limit && o.LimitPrice > 0)
-                    {
-                        if ((p.MarketPosition == MarketPosition.Long && o.OrderAction == OrderAction.Sell) ||
-                            (p.MarketPosition == MarketPosition.Short && o.OrderAction == OrderAction.Buy))
-                            tp = o.LimitPrice;
-                    }
+                        tp = o.LimitPrice;
                 }
 
                 list.Add(new Dictionary<string, object>
