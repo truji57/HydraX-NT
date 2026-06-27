@@ -9,7 +9,7 @@ import type { Account, AccountForm, TestResult } from '../types';
 import { Plus, Trash2, Wifi, X, Edit3 } from 'lucide-react';
 
 const emptyForm: AccountForm = {
-  name: '', role: 'MASTER', login: 0, password: '',
+  name: '', role: 'MASTER', login: '', password: '',
   bridge_host: 'localhost', bridge_port: 5555,
   poll_interval: 0.5, active: true,
 };
@@ -85,7 +85,7 @@ export default function AccountsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div><Label>Nombre</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
             <div><Label>Rol</Label><Select value={form.role} onChange={e => setForm({...form, role: e.target.value as 'MASTER'|'SLAVE'})}><option value="MASTER">MASTER</option><option value="SLAVE">SLAVE</option></Select></div>
-            <div><Label>Login NT8</Label><Input type="number" value={form.login||''} onChange={e => setForm({...form, login: Number(e.target.value)})} /></div>
+            <div><Label>Cuenta NT8</Label><Input value={form.login||''} onChange={e => setForm({...form, login: e.target.value})} placeholder="Nombre exacto en NT8 (Sim101...)" /></div>
             <div><Label>Password (no se usa)</Label><Input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Bridge no requiere password" /></div>
             <div><Label>Bridge Host</Label><Input value={form.bridge_host} onChange={e => setForm({...form, bridge_host: e.target.value})} /></div>
             <div><Label>Bridge Port</Label><Input type="number" value={form.bridge_port} onChange={e => setForm({...form, bridge_port: Number(e.target.value)})} /></div>
