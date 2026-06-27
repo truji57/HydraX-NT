@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Input, Select, Label, Checkbox, Switch } from '../components/ui/input';
+import { Input, Select, Label, Checkbox, Switch, DecimalInput } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { api } from '../lib/api';
 import { useStore } from '../store';
@@ -172,13 +172,13 @@ export default function SlaveConfigPage() {
             )}
 
             {config.risk_mode === 'FIXED' && <div><Label>Contratos Fijos</Label><Input type="number" value={config.fixed_contracts} onChange={e => updateConfig({fixed_contracts: Number(e.target.value)})} /></div>}
-            {config.risk_mode === 'RISK_PERCENT' && <div><Label>% Riesgo</Label><Input type="number" step="0.1" value={config.risk_percent} onChange={e => updateConfig({risk_percent: Number(e.target.value)})} /></div>}
-            {config.risk_mode === 'RISK_USD' && <div><Label>Riesgo USD</Label><Input type="number" step="1" value={config.risk_usd ?? 50} onChange={e => updateConfig({risk_usd: Number(e.target.value)})} /></div>}
-            {config.risk_mode === 'RATIO' && <div><Label>Multiplicador</Label><Input type="number" step="0.1" value={config.lot_multiplier} onChange={e => updateConfig({lot_multiplier: Number(e.target.value)})} /></div>}
+            {config.risk_mode === 'RISK_PERCENT' && <div><Label>% Riesgo</Label><DecimalInput value={config.risk_percent} onChange={v => updateConfig({risk_percent: v})} /></div>}
+            {config.risk_mode === 'RISK_USD' && <div><Label>Riesgo USD</Label><DecimalInput value={config.risk_usd ?? 50} onChange={v => updateConfig({risk_usd: v})} /></div>}
+            {config.risk_mode === 'RATIO' && <div><Label>Multiplicador</Label><DecimalInput value={config.lot_multiplier} onChange={v => updateConfig({lot_multiplier: v})} /></div>}
 
             <div><Label>Max Contratos</Label><Input type="number" value={config.max_contracts} onChange={e => updateConfig({max_contracts: Number(e.target.value)})} /></div>
             <div><Label>Max Posiciones</Label><Input type="number" value={config.max_positions} onChange={e => updateConfig({max_positions: Number(e.target.value)})} /></div>
-            <div><Label>Delay (seg)</Label><Input type="number" step="0.1" value={config.delay_sec} onChange={e => updateConfig({delay_sec: Number(e.target.value)})} /></div>
+            <div><Label>Delay (seg)</Label><DecimalInput value={config.delay_sec} onChange={v => updateConfig({delay_sec: v})} /></div>
             <div><Label>Magic Number</Label><Input type="number" value={config.magic_number ?? 0} onChange={e => updateConfig({magic_number: Number(e.target.value)})} /></div>
           </div>
 

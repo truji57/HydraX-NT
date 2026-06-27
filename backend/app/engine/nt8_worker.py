@@ -101,7 +101,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                 pid = p.get("id", str(hash(str(p))))
                 cur_positions[pid] = p
 
-            for pid, p in cur_positions.items():
+            for pid, p in list(cur_positions.items()):
                 if pid not in prev_positions:
                     sl = p.get("sl", 0) or 0
                     tp = p.get("tp", 0) or 0
@@ -386,6 +386,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 contracts = calculate_contracts_fixed(_config["fixed_contracts"])
             elif _config["risk_mode"] == "RATIO":
                 contracts = calculate_contracts_ratio(payload.get("contracts", 1), _config["lot_multiplier"])
+                logger.info(f"{display}: RATIO master_c={payload.get('contracts',1)} mult={_config['lot_multiplier']} -> {contracts}c")
             elif _config["risk_mode"] == "RISK_PERCENT":
                 if sl and payload.get("tick_size"):
                     balance = _get_account_balance(conn, login)

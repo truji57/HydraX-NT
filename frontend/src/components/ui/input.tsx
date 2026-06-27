@@ -50,6 +50,42 @@ export function Checkbox({
   );
 }
 
+export function DecimalInput({
+  value,
+  onChange,
+  className,
+  ...props
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> & {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const [text, setText] = React.useState(String(value));
+
+  React.useEffect(() => {
+    setText(String(value));
+  }, [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      className={cn(
+        'flex h-10 w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50',
+        className
+      )}
+      value={text}
+      onChange={e => setText(e.target.value)}
+      onBlur={() => {
+        const cleaned = text.replace(',', '.');
+        const num = parseFloat(cleaned);
+        if (!isNaN(num)) onChange(num);
+        else setText(String(value));
+      }}
+      {...props}
+    />
+  );
+}
+
 export function Switch({
   checked,
   onChange,

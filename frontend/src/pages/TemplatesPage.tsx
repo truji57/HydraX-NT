@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Input, Select, Label } from '../components/ui/input';
+import { Input, Select, Label, DecimalInput } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { api } from '../lib/api';
 import { useStore } from '../store';
@@ -102,12 +102,12 @@ export default function TemplatesPage() {
               <option value="BALANCE_PROP">Prop. Balance</option>
             </Select></div>
             {form.risk_mode === 'FIXED' && <div><Label>Contratos Fijos</Label><Input type="number" value={form.fixed_contracts} onChange={e => setForm({...form, fixed_contracts: Number(e.target.value)})} /></div>}
-            {form.risk_mode === 'RISK_PERCENT' && <div><Label>% Riesgo</Label><Input type="number" step="0.1" value={form.risk_percent} onChange={e => setForm({...form, risk_percent: Number(e.target.value)})} /></div>}
-            {form.risk_mode === 'RISK_USD' && <div><Label>Riesgo USD</Label><Input type="number" step="1" value={form.risk_usd} onChange={e => setForm({...form, risk_usd: Number(e.target.value)})} /></div>}
-            {form.risk_mode === 'RATIO' && <div><Label>Multiplicador</Label><Input type="number" step="0.1" value={form.lot_multiplier} onChange={e => setForm({...form, lot_multiplier: Number(e.target.value)})} /></div>}
+            {form.risk_mode === 'RISK_PERCENT' && <div><Label>% Riesgo</Label><DecimalInput value={form.risk_percent} onChange={v => setForm({...form, risk_percent: v})} /></div>}
+            {form.risk_mode === 'RISK_USD' && <div><Label>Riesgo USD</Label><DecimalInput value={form.risk_usd} onChange={v => setForm({...form, risk_usd: v})} /></div>}
+            {form.risk_mode === 'RATIO' && <div><Label>Multiplicador</Label><DecimalInput value={form.lot_multiplier} onChange={v => setForm({...form, lot_multiplier: v})} /></div>}
             <div><Label>Max Contratos</Label><Input type="number" value={form.max_contracts} onChange={e => setForm({...form, max_contracts: Number(e.target.value)})} /></div>
             <div><Label>Max Posiciones</Label><Input type="number" value={form.max_positions} onChange={e => setForm({...form, max_positions: Number(e.target.value)})} /></div>
-            <div><Label>Delay (seg)</Label><Input type="number" step="0.1" value={form.delay_sec} onChange={e => setForm({...form, delay_sec: Number(e.target.value)})} /></div>
+            <div><Label>Delay (seg)</Label><DecimalInput value={form.delay_sec} onChange={v => setForm({...form, delay_sec: v})} /></div>
             <div><Label>Magic Number</Label><Input type="number" value={form.magic_number} onChange={e => setForm({...form, magic_number: Number(e.target.value)})} /></div>
           </div>
           <div className="flex gap-2 justify-end"><Button variant="ghost" onClick={resetForm}>Cancelar</Button><Button variant="primary" onClick={handleSubmit}>{editing ? 'Guardar' : 'Crear'}</Button></div>

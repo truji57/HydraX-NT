@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
-import { Input, Select, Label, Checkbox } from '../components/ui/input';
+import { Input, Select, Label, Checkbox, DecimalInput } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { api } from '../lib/api';
@@ -138,7 +138,7 @@ export default function AccountsPage() {
             <div><Label>Password (no se usa)</Label><Input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Bridge no requiere password" /></div>
             <div><Label>Bridge Host</Label><Input value={form.bridge_host} onChange={e => setForm({...form, bridge_host: e.target.value})} /></div>
             <div><Label>Bridge Port</Label><Input type="number" value={form.bridge_port} onChange={e => setForm({...form, bridge_port: Number(e.target.value)})} /></div>
-            <div><Label>Poll Interval (s)</Label><Input type="number" step="0.1" value={form.poll_interval} onChange={e => setForm({...form, poll_interval: Number(e.target.value)})} /></div>
+            <div><Label>Poll Interval (s)</Label><DecimalInput value={form.poll_interval} onChange={v => setForm({...form, poll_interval: v})} /></div>
             <div className="flex items-end gap-2 pb-1"><Checkbox checked={form.active} onChange={e => setForm({...form, active: e.target.checked})} /><Label>Activo</Label></div>
             {form.role === 'MASTER' && (
               <div className="flex items-end gap-2 pb-1">
