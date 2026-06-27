@@ -199,12 +199,33 @@ namespace NinjaTrader.NinjaScript.AddOns
             var list = new List<Dictionary<string, object>>();
             foreach (var p in acc.Positions.Where(p => p.Quantity != 0))
             {
+                // Find attached SL/TP orders
+                double sl = 0, tp = 0;
+                foreach (var o in acc.Orders.Where(o => o.Instrument == p.Instrument &&
+                    (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)))
+                {
+                    if (o.OrderType == OrderType.StopMarket && o.StopPrice > 0)
+                    {
+                        if ((p.MarketPosition == MarketPosition.Long && o.OrderAction == OrderAction.Sell) ||
+                            (p.MarketPosition == MarketPosition.Short && o.OrderAction == OrderAction.Buy))
+                            sl = o.StopPrice;
+                    }
+                    if (o.OrderType == OrderType.Limit && o.LimitPrice > 0)
+                    {
+                        if ((p.MarketPosition == MarketPosition.Long && o.OrderAction == OrderAction.Sell) ||
+                            (p.MarketPosition == MarketPosition.Short && o.OrderAction == OrderAction.Buy))
+                            tp = o.LimitPrice;
+                    }
+                }
+
                 list.Add(new Dictionary<string, object>
                 {
                     ["symbol"] = p.Instrument.FullName,
                     ["direction"] = p.MarketPosition == MarketPosition.Long ? "BUY" : "SELL",
                     ["contracts"] = Math.Abs(p.Quantity),
                     ["entry_price"] = p.AveragePrice,
+                    ["sl"] = sl,
+                    ["tp"] = tp,
                     ["id"] = acc.Name + "_" + p.Instrument.FullName + "_" + p.AveragePrice.ToString("F0"),
                 });
             }
