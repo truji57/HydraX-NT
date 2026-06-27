@@ -52,14 +52,22 @@ def test_account(account_id: str, db: Session = Depends(get_db)):
     if not acc:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
-        import socket
+        import socket, json
         s = socket.socket()
         s.settimeout(3)
         s.connect((acc.bridge_host, acc.bridge_port))
+        s.sendall(json.dumps({"action": "ACCOUNT", "account": acc.name}).encode() + b"\n")
+        resp = b""
+        while b"\n" not in resp:
+            resp += s.recv(4096)
         s.close()
-        return {"success": True, "message": f"NT8 bridge OK en {acc.bridge_host}:{acc.bridge_port}"}
+        data = json.loads(resp.strip().decode())
+        if data.get("ok"):
+            msg = f"{data.get('name', acc.name)} - Balance: {data.get('balance', '?')} | {data.get('positions', 0)} posiciones"
+            return {"success": True, "message": msg, "balance": data.get("balance"), "server": f"{acc.bridge_host}:{acc.bridge_port}"}
+        return {"success": False, "message": data.get("error", "Respuesta inesperada")}
     except Exception as e:
-        return {"success": False, "message": f"No se pudo conectar: {e}"}
+        return {"success": False, "message": f"No se pudo conectar al bridge: {e}"}
 
 
 @router.get("/slaves/{account_id}/config", response_model=SlaveConfigResponse)

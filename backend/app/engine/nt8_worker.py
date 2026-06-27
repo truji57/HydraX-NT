@@ -30,7 +30,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
     logger.info(f"{display}: connected to NT8 bridge")
 
     prev_positions = {}
-    positions = conn.get_positions()
+    positions = conn.get_positions(display)
     for p in positions:
         pid = p.get("id", str(hash(str(p))))
         prev_positions[pid] = p

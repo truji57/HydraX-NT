@@ -51,11 +51,12 @@ class NT8Connector:
             self.disconnect()
         return None
 
-    def get_account(self) -> dict | None:
-        return self._send({"action": "ACCOUNT"})
+    def get_account(self, account_name: str = "") -> dict | None:
+        resp = self._send({"action": "ACCOUNT", "account": account_name})
+        return resp
 
-    def get_positions(self) -> list[dict]:
-        resp = self._send({"action": "POSITIONS"})
+    def get_positions(self, account_name: str = "") -> list[dict]:
+        resp = self._send({"action": "POSITIONS", "account": account_name})
         if resp and resp.get("ok"):
             return resp.get("positions", [])
         return []
