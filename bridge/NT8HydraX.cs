@@ -28,9 +28,22 @@ namespace NinjaTrader.NinjaScript.AddOns
             {
                 Name = "NT8HydraX";
             }
-            else if (State == State.DataLoaded)
+            else if (State == State.Configure)
             {
-                StartServer();
+                // Accounts might not be loaded yet - use timer to retry
+                var timer = new System.Timers.Timer(2000);
+                timer.Elapsed += (sender, args) =>
+                {
+                    if (_server == null && Account.All.Count > 0)
+                    {
+                        timer.Stop();
+                        timer.Dispose();
+                        StartServer();
+                    }
+                };
+                timer.AutoReset = true;
+                timer.Start();
+                Log("HydraX: Waiting for accounts...", LogLevel.Information);
             }
             else if (State == State.Terminated)
             {
@@ -93,8 +106,8 @@ namespace NinjaTrader.NinjaScript.AddOns
             using (client)
             using (var stream = client.GetStream())
             {
-                var reader = new StreamReader(stream, Encoding.UTF8);
-                var writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true, NewLine = "\n" };
+                var reader = new StreamReader(stream, new UTF8Encoding(false));
+                var writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
                 try
                 {
                     string line = reader.ReadLine();
