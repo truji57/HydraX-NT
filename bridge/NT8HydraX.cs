@@ -230,7 +230,7 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 var orderAction = direction == "BUY" ? OrderAction.Buy : OrderAction.Sell;
 
-                acc.CreateOrder(
+                var order = acc.CreateOrder(
                     instrument,
                     orderAction,
                     OrderType.Market,
@@ -243,7 +243,14 @@ namespace NinjaTrader.NinjaScript.AddOns
                     null
                 );
 
-                Log("HydraX: " + direction + " " + contracts + "x " + symbol + " on " + acc.Name, LogLevel.Information);
+                if (order == null)
+                    return "{\"ok\":false,\"error\":\"CreateOrder returned null\"}";
+
+                Log($"HydraX: {direction} {contracts}x {symbol} on {acc.Name} - OrderState={order.OrderState}", LogLevel.Information);
+
+                if (order.OrderState == OrderState.Rejected)
+                    return "{\"ok\":false,\"error\":\"Order rejected\"}";
+
                 return "{\"ok\":true,\"position_id\":\"" + symbol + "_" + DateTime.Now.Ticks + "\"}";
             }
             catch (Exception ex)
