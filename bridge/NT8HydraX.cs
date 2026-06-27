@@ -341,7 +341,7 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 // Cancel existing SL/TP orders for this instrument
                 foreach (var o in acc.Orders.Where(o => o.Instrument == instrument &&
-                    o.OrderState == OrderState.Working).ToList())
+                    (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)).ToList())
                 {
                     if (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)
                     {
@@ -397,7 +397,7 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                     // Cancel SL/TP orders first
                     foreach (var o in acc.Orders.Where(o => o.Instrument == instrument &&
-                        o.OrderState == OrderState.Working &&
+                        (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted) &&
                         (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)).ToList())
                     {
                         acc.Cancel(new[] { o });
