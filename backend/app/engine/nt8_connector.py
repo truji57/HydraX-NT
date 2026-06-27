@@ -11,46 +11,38 @@ class NT8Connector:
     def __init__(self, host: str = "localhost", port: int = 5555):
         self.host = host
         self.port = port
-        self._sock: socket.socket | None = None
 
     def connect(self) -> bool:
         try:
-            self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._sock.settimeout(5)
-            self._sock.connect((self.host, self.port))
-            logger.info(f"NT8: connected to {self.host}:{self.port}")
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(3)
+            s.connect((self.host, self.port))
+            s.close()
             return True
-        except Exception as e:
-            logger.error(f"NT8: connect failed: {e}")
+        except Exception:
             return False
 
     def disconnect(self):
-        if self._sock:
-            try:
-                self._sock.close()
-            except Exception:
-                pass
-            self._sock = None
+        pass
 
     def _send(self, data: dict) -> dict | None:
-        if not self._sock:
-            return None
         try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            s.connect((self.host, self.port))
             msg = json.dumps(data) + "\n"
-            self._sock.sendall(msg.encode())
+            s.sendall(msg.encode())
             response = b""
             while b"\n" not in response:
-                chunk = self._sock.recv(4096)
+                chunk = s.recv(4096)
                 if not chunk:
                     break
                 response += chunk
+            s.close()
             if response:
                 return json.loads(response.decode("utf-8-sig").strip())
         except Exception as e:
-            logger.warning(f"NT8: send error: {e}")
-            self.disconnect()
-            if not self.connect():
-                logger.warning(f"NT8: reconnect failed")
+            logger.warning(f"NT8: {e}")
         return None
 
     def get_account(self, account_name: str = "") -> dict | None:
