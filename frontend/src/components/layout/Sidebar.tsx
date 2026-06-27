@@ -50,9 +50,9 @@ export function Sidebar() {
           <span className="text-xs text-zinc-500">{copierStatus.running ? 'RUNNING' : 'STOPPED'}</span>
         </div>
         <button onClick={handleStartStop}
-          className={cn('w-full flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors',
+          className={cn('w-full flex items-center justify-center gap-2 py-3 rounded-md text-base font-semibold transition-colors',
             copierStatus.running ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20')}>
-          {copierStatus.running ? <><Square size={14} /> STOP</> : <><Play size={14} /> RUN</>}
+          {copierStatus.running ? <><Square size={16} /> STOP</> : <><Play size={16} /> RUN</>}
         </button>
         {copierStatus.running && copierStatus.active_masters > 0 && (
           <div className="mt-2 text-xs text-zinc-500 text-center">{copierStatus.active_masters}M / {copierStatus.active_slaves}S</div>
