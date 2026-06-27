@@ -259,8 +259,40 @@ namespace NinjaTrader.NinjaScript.AddOns
                 Log("HydraX: " + direction + " " + contracts + "x " + symbol + " on " + acc.Name +
                     " - OrderState=" + order.OrderState, LogLevel.Information);
 
+                // SL/TP as separate orders (NT8 futures style)
+                double sl = cmd.ContainsKey("sl") ? Convert.ToDouble(cmd["sl"]) : 0;
+                double tp = cmd.ContainsKey("tp") ? Convert.ToDouble(cmd["tp"]) : 0;
+
                 if (order.OrderState == OrderState.Filled || order.OrderState == OrderState.PartFilled)
+                {
+                    if (sl > 0)
+                    {
+                        // For BUY: SL is a Sell Stop. For SELL: SL is a Buy Stop
+                        var slAction = direction == "BUY" ? OrderAction.Sell : OrderAction.Buy;
+                        var slType = OrderType.StopMarket;
+                        var slOrder = acc.CreateOrder(instrument, slAction, slType, TimeInForce.Gtc,
+                            contracts, 0, sl, "", "HydraX-SL-" + magic, null);
+                        if (slOrder != null)
+                        {
+                            acc.Submit(new[] { slOrder });
+                            Log("HydraX: SL " + sl + " placed for " + symbol + " on " + acc.Name, LogLevel.Information);
+                        }
+                    }
+                    if (tp > 0)
+                    {
+                        // For BUY: TP is a Sell Limit. For SELL: TP is a Buy Limit
+                        var tpAction = direction == "BUY" ? OrderAction.Sell : OrderAction.Buy;
+                        var tpType = OrderType.Limit;
+                        var tpOrder = acc.CreateOrder(instrument, tpAction, tpType, TimeInForce.Gtc,
+                            contracts, tp, 0, "", "HydraX-TP-" + magic, null);
+                        if (tpOrder != null)
+                        {
+                            acc.Submit(new[] { tpOrder });
+                            Log("HydraX: TP " + tp + " placed for " + symbol + " on " + acc.Name, LogLevel.Information);
+                        }
+                    }
                     return "{\"ok\":true,\"position_id\":\"" + symbol + "_" + DateTime.Now.Ticks + "\"}";
+                }
 
                 return "{\"ok\":false,\"error\":\"Order " + order.OrderState + "\"}";
             }
