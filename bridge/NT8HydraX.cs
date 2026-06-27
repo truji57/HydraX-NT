@@ -246,12 +246,22 @@ namespace NinjaTrader.NinjaScript.AddOns
                 if (order == null)
                     return "{\"ok\":false,\"error\":\"CreateOrder returned null\"}";
 
+                // Wait up to 5s for order to fill
+                for (int i = 0; i < 50; i++)
+                {
+                    if (order.OrderState == OrderState.Filled ||
+                        order.OrderState == OrderState.Rejected ||
+                        order.OrderState == OrderState.Cancelled)
+                        break;
+                    System.Threading.Thread.Sleep(100);
+                }
+
                 Log($"HydraX: {direction} {contracts}x {symbol} on {acc.Name} - OrderState={order.OrderState}", LogLevel.Information);
 
-                if (order.OrderState == OrderState.Rejected)
-                    return "{\"ok\":false,\"error\":\"Order rejected\"}";
+                if (order.OrderState == OrderState.Filled || order.OrderState == OrderState.PartFilled || order.OrderState == OrderState.Working)
+                    return "{\"ok\":true,\"position_id\":\"" + symbol + "_" + DateTime.Now.Ticks + "\"}";
 
-                return "{\"ok\":true,\"position_id\":\"" + symbol + "_" + DateTime.Now.Ticks + "\"}";
+                return "{\"ok\":false,\"error\":\"Order state: " + order.OrderState + "\"}";
             }
             catch (Exception ex)
             {
