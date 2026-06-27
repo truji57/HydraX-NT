@@ -1,9 +1,11 @@
 """Worker NinjaTrader 8 - monitor para masters y executor para slaves."""
 import time
 import multiprocessing as mp
+from datetime import datetime
 
 from app.database import SessionLocal
 from app.models.account import SlaveConfig
+from app.models.trade_log import TradeLog, TradeAction, TradeResult
 from app.engine.nt8_connector import NT8Connector
 from app.engine.ticket_mapper import (
     reserve_pending, confirm_open, mark_pending_error, mark_closed, get_slave_ticket,
@@ -17,6 +19,43 @@ from app.engine.command_router import is_slave_linked_to_master
 from app.utils.logger import get_logger
 
 logger = get_logger("hydrax.nt8")
+
+
+def _log_trade(master_id: str | None, slave_id: str, action: TradeAction, symbol: str,
+               volume: float, price: float, sl: float | None, tp: float | None,
+               result: TradeResult, master_ticket: int | None = None,
+               slave_ticket: int | None = None,
+               error_code: int | None = None, error_msg: str | None = None):
+    try:
+        db = SessionLocal()
+        entry = TradeLog(
+            timestamp=datetime.utcnow(),
+            master_account_id=master_id,
+            slave_account_id=slave_id,
+            master_ticket=master_ticket,
+            slave_ticket=slave_ticket,
+            action=action,
+            symbol=symbol,
+            volume=volume,
+            price=price,
+            sl=sl,
+            tp=tp,
+            result=result,
+            error_code=error_code,
+            error_message=error_msg,
+        )
+        db.add(entry)
+        db.commit()
+        db.close()
+    except Exception:
+        pass
+
+def _emit_event(event_queue, event_type: str, data: dict):
+    if event_queue is not None:
+        try:
+            event_queue.put({"type": event_type, "data": data})
+        except Exception:
+            pass
 
 
 def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port: int,
@@ -298,16 +337,20 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             if result and result.get("ok"):
                 slave_ticket = result.get("position_id", 0)
                 confirm_open(master_ticket, account_id, slave_ticket)
+                _log_trade(master_account_id, account_id, TradeAction.OPEN, symbol, contracts,
+                           payload.get("price", 0), sl, tp, TradeResult.SUCCESS,
+                           master_ticket=master_ticket, slave_ticket=slave_ticket)
+                _emit_event(event_queue, "copy_ok", {"slave": display, "symbol": symbol, "action": "OPEN",
+                           "contracts": contracts, "master_ticket": master_ticket})
                 logger.info(f"{display}: OPEN OK {symbol} x{contracts}")
-                try:
-                    event_queue.put({"type": "copy_ok", "data": {
-                        "slave": display, "symbol": symbol, "action": "OPEN",
-                        "contracts": contracts, "master_ticket": master_ticket,
-                    }})
-                except Exception:
-                    pass
             else:
                 mark_pending_error(master_ticket, account_id)
+                _log_trade(master_account_id, account_id, TradeAction.OPEN, symbol, contracts,
+                           payload.get("price", 0), sl, tp, TradeResult.FAILED,
+                           master_ticket=master_ticket)
+                _emit_event(event_queue, "copy_error", {"slave": display, "symbol": symbol, "action": "OPEN",
+                           "contracts": contracts, "master_ticket": master_ticket,
+                           "error": result.get("error", "Unknown") if result else "No response"})
                 logger.error(f"{display}: OPEN FAIL {symbol}")
 
         elif action == "CLOSE":
@@ -320,7 +363,16 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             result = conn.close_position(str(nt8_pid), account=login)
             if result and result.get("ok"):
                 mark_closed(master_ticket, account_id)
+                _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),
+                           payload.get("contracts", 0), 0, None, None, TradeResult.SUCCESS,
+                           master_ticket=master_ticket, slave_ticket=slave_ticket)
+                _emit_event(event_queue, "copy_ok", {"slave": display, "symbol": payload.get("symbol", ""),
+                           "action": "CLOSE", "master_ticket": master_ticket})
                 logger.info(f"{display}: CLOSE OK {payload.get('symbol','?')}")
+            else:
+                _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),
+                           payload.get("contracts", 0), 0, None, None, TradeResult.FAILED,
+                           master_ticket=master_ticket, slave_ticket=slave_ticket)
 
     conn.disconnect()
     logger.info(f"{display}: worker stopped")
