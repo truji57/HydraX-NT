@@ -228,14 +228,40 @@ namespace NinjaTrader.NinjaScript.AddOns
                 if (instrument == null)
                     return "{\"ok\":false,\"error\":\"Symbol not found: " + symbol + "\"}";
 
-                // Use EnterLong/EnterShort for immediate execution
-                if (direction == "BUY")
-                    acc.EnterLong(instrument, contracts, "HydraX");
-                else
-                    acc.EnterShort(instrument, contracts, "HydraX");
+                var orderAction = direction == "BUY" ? OrderAction.Buy : OrderAction.Sell;
 
-                Log("HydraX: " + direction + " " + contracts + "x " + symbol + " on " + acc.Name, LogLevel.Information);
-                return "{\"ok\":true,\"position_id\":\"" + symbol + "_" + DateTime.Now.Ticks + "\"}";
+                var order = acc.CreateOrder(
+                    instrument,
+                    orderAction,
+                    OrderType.Market,
+                    TimeInForce.Gtc,
+                    contracts,
+                    0, 0, "", "HydraX", null
+                );
+
+                if (order == null)
+                    return "{\"ok\":false,\"error\":\"CreateOrder returned null\"}";
+
+                acc.Submit(new[] { order });
+
+                // Esperar a que se ejecute
+                for (int i = 0; i < 50; i++)
+                {
+                    if (order.OrderState == OrderState.Filled ||
+                        order.OrderState == OrderState.PartFilled ||
+                        order.OrderState == OrderState.Rejected ||
+                        order.OrderState == OrderState.Cancelled)
+                        break;
+                    System.Threading.Thread.Sleep(100);
+                }
+
+                Log("HydraX: " + direction + " " + contracts + "x " + symbol + " on " + acc.Name +
+                    " - OrderState=" + order.OrderState, LogLevel.Information);
+
+                if (order.OrderState == OrderState.Filled || order.OrderState == OrderState.PartFilled)
+                    return "{\"ok\":true,\"position_id\":\"" + symbol + "_" + DateTime.Now.Ticks + "\"}";
+
+                return "{\"ok\":false,\"error\":\"Order " + order.OrderState + "\"}";
             }
             catch (Exception ex)
             {
@@ -253,32 +279,27 @@ namespace NinjaTrader.NinjaScript.AddOns
                 string symbol = cmd.ContainsKey("symbol") ? cmd["symbol"].ToString() : "";
                 int closed = 0;
 
-                var instrument = !string.IsNullOrEmpty(symbol) ? Instrument.GetInstrument(symbol) : null;
+                var positions = acc.Positions.Where(p => p.Quantity != 0);
+                if (!string.IsNullOrEmpty(symbol))
+                    positions = positions.Where(p => p.Instrument.FullName == symbol);
 
-                if (instrument != null)
+                foreach (var pos in positions.ToList())
                 {
-                    // Close specific instrument
-                    var pos = acc.Positions.FirstOrDefault(p => p.Instrument == instrument && p.Quantity != 0);
-                    if (pos != null)
+                    var orderAction = pos.MarketPosition == MarketPosition.Long
+                        ? OrderAction.Sell : OrderAction.Buy;
+
+                    var order = acc.CreateOrder(
+                        pos.Instrument,
+                        orderAction,
+                        OrderType.Market,
+                        TimeInForce.Gtc,
+                        Math.Abs(pos.Quantity),
+                        0, 0, "", "HydraX Close", null
+                    );
+
+                    if (order != null)
                     {
-                        int qty = Math.Abs(pos.Quantity);
-                        if (pos.MarketPosition == MarketPosition.Long)
-                            acc.ExitLong(instrument, qty, "HydraX Close", instrument.Name);
-                        else
-                            acc.ExitShort(instrument, qty, "HydraX Close", instrument.Name);
-                        closed++;
-                    }
-                }
-                else
-                {
-                    // Close all positions
-                    foreach (var pos in acc.Positions.Where(p => p.Quantity != 0).ToList())
-                    {
-                        int qty = Math.Abs(pos.Quantity);
-                        if (pos.MarketPosition == MarketPosition.Long)
-                            acc.ExitLong(pos.Instrument, qty, "HydraX Close", pos.Instrument.Name);
-                        else
-                            acc.ExitShort(pos.Instrument, qty, "HydraX Close", pos.Instrument.Name);
+                        acc.Submit(new[] { order });
                         closed++;
                     }
                 }
