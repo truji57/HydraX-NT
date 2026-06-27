@@ -58,7 +58,7 @@ class Account(Base):
 
     @property
     def linked_masters(self) -> list[str]:
-        return [link.master.name for link in self.master_links if link.active]
+        return [link.master.name for link in self.master_links if link.active and link.master.role == AccountRole.MASTER]
 
 
 class SlaveConfig(Base):

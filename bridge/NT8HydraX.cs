@@ -414,14 +414,27 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 var instrument = pos.Instrument;
 
-                foreach (var o in acc.Orders.Where(o => o.Instrument == instrument &&
-                    (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)).ToList())
+                var ordersToCancel = acc.Orders.Where(o => o.Instrument == instrument &&
+                    (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted) &&
+                    (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)).ToList();
+
+                foreach (var o in ordersToCancel)
                 {
-                    if (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)
+                    acc.Cancel(new[] { o });
+                    Log("HydraX: Cancelling " + o.OrderType + " for " + instrument.FullName + " on " + acc.Name, LogLevel.Information);
+                }
+
+                foreach (var o in ordersToCancel)
+                {
+                    for (int i = 0; i < 10; i++)
                     {
-                        acc.Cancel(new[] { o });
-                        Log("HydraX: Cancelled " + o.OrderType + " for " + instrument.FullName + " on " + acc.Name, LogLevel.Information);
+                        if (o.OrderState == OrderState.Cancelled ||
+                            o.OrderState == OrderState.Filled ||
+                            o.OrderState == OrderState.Rejected)
+                            break;
+                        System.Threading.Thread.Sleep(100);
                     }
+                    Log("HydraX: Cancelled " + o.OrderType + " state=" + o.OrderState + " for " + instrument.FullName, LogLevel.Information);
                 }
 
                 if (sl > 0)
@@ -468,11 +481,25 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 var instrument = pos.Instrument;
 
-                foreach (var o in acc.Orders.Where(o => o.Instrument == instrument &&
+                var ordersToCancel = acc.Orders.Where(o => o.Instrument == instrument &&
                     (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted) &&
-                    (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)).ToList())
+                    (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)).ToList();
+
+                foreach (var o in ordersToCancel)
                 {
                     acc.Cancel(new[] { o });
+                }
+
+                foreach (var o in ordersToCancel)
+                {
+                    for (int i = 0; i < 10; i++)
+                    {
+                        if (o.OrderState == OrderState.Cancelled ||
+                            o.OrderState == OrderState.Filled ||
+                            o.OrderState == OrderState.Rejected)
+                            break;
+                        System.Threading.Thread.Sleep(100);
+                    }
                 }
 
                 var orderAction = pos.MarketPosition == MarketPosition.Long

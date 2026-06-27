@@ -6,17 +6,19 @@ import { Switch } from '../components/ui/input';
 import { useStore } from '../store';
 import { api } from '../lib/api';
 import { TrendingUp, TrendingDown, Wallet, BarChart3, AlertTriangle, X } from 'lucide-react';
-import type { Account, SlaveConfig } from '../types';
+import type { Account, SlaveConfig, SlaveTemplate } from '../types';
 
 export default function DashboardPage() {
   const { copierStatus, accounts, fetchStatus, logs } = useStore();
   const [confirmClose, setConfirmClose] = useState<Account | null>(null);
   const [closing, setClosing] = useState(false);
   const [slaveConfigs, setSlaveConfigs] = useState<Record<string, SlaveConfig>>({});
+  const [templates, setTemplates] = useState<SlaveTemplate[]>([]);
 
   useEffect(() => {
     fetchStatus();
     useStore.getState().fetchAccounts();
+    api.get<SlaveTemplate[]>('/templates').then(setTemplates).catch(() => {});
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -46,6 +48,22 @@ export default function DashboardPage() {
       setSlaveConfigs(prev => ({ ...prev, [slaveId]: cfg }));
       useStore.getState().showToast('Error al actualizar', 'error');
     }
+  };
+
+  const matchTemplate = (cfg: SlaveConfig): string | null => {
+    const t = templates.find(tp =>
+      tp.risk_mode === cfg.risk_mode &&
+      tp.fixed_contracts === cfg.fixed_contracts &&
+      tp.risk_percent === cfg.risk_percent &&
+      tp.risk_usd === (cfg.risk_usd ?? 50) &&
+      tp.lot_multiplier === cfg.lot_multiplier &&
+      tp.max_contracts === cfg.max_contracts &&
+      tp.max_positions === cfg.max_positions &&
+      tp.autocopy_enable === cfg.autocopy_enable &&
+      tp.delay_sec === cfg.delay_sec &&
+      tp.magic_number === (cfg.magic_number ?? 0)
+    );
+    return t?.name || null;
   };
 
   const handleEmergencyClose = async () => {
@@ -113,6 +131,7 @@ export default function DashboardPage() {
                              slaveConfigs[s.id].risk_mode === 'RISK_PERCENT' ? `${slaveConfigs[s.id].risk_percent}% balance` :
                              slaveConfigs[s.id].risk_mode === 'RATIO' ? `x${slaveConfigs[s.id].lot_multiplier} master` :
                              'Prop. balance'}
+                    {matchTemplate(slaveConfigs[s.id]) && <span className="text-zinc-600"> ({matchTemplate(slaveConfigs[s.id])})</span>}
                   </p>
                 )}
               </div>

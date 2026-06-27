@@ -39,8 +39,15 @@ def update_account(db: Session, account_id: str, data: AccountUpdate) -> Optiona
     update_data = data.model_dump(exclude_unset=True)
     if "password" in update_data and update_data["password"]:
         update_data["password"] = encrypt_password(update_data["password"])
+    old_role = account.role
     for key, value in update_data.items():
         setattr(account, key, value)
+    if old_role != "SLAVE" and account.role == "SLAVE":
+        existing = db.query(SlaveConfig).filter(SlaveConfig.account_id == account_id).first()
+        if not existing:
+            db.add(SlaveConfig(account_id=account_id))
+    if old_role == "MASTER" and account.role != "MASTER":
+        db.query(SlaveMasterLink).filter(SlaveMasterLink.master_id == account_id).delete()
     db.commit()
     db.refresh(account)
     return account

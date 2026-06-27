@@ -101,6 +101,8 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                 pid = p.get("id", str(hash(str(p))))
                 cur_positions[pid] = p
 
+            cur_orders = {str(o.get("ticket", hash(str(o)))): o for o in conn.get_orders(login)}
+
             for pid, p in list(cur_positions.items()):
                 if pid not in prev_positions:
                     sl = p.get("sl", 0) or 0
@@ -156,30 +158,45 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
             for pid, p in prev_positions.items():
                 if pid not in cur_positions:
                     pending_open.pop(pid, None)
-                    logger.info(f"{display}: closed position {pid}")
-                    cmd = {
-                        "action": "CLOSE",
-                        "payload": {
-                            "position_ticket": hash(pid) % 1000000,
-                            "symbol": p.get("symbol", "?"),
-                            "direction": p.get("direction", "BUY"),
-                            "contracts": p.get("contracts", 1),
-                            "master_account_id": account_id,
-                            "bridge_host": bridge_host,
-                            "bridge_port": bridge_port,
-                            "nt8_position_id": pid,
-                        },
-                    }
-                    for q in slave_queues.values():
-                        if not stop_flag.is_set():
-                            q.put(cmd)
-                    try:
-                        event_queue.put({
-                            "type": "position_close",
-                            "data": {"master": display, "symbol": p.get("symbol", "?"), "ticket": pid},
-                        })
-                    except Exception:
-                        pass
+                    symbol = p.get("symbol", "?")
+                    filled_target = any(
+                        o.get("symbol") == symbol and o.get("type") in ("STOP", "LIMIT") and o.get("state") == "Filled"
+                        for o in cur_orders.values()
+                    )
+                    if filled_target:
+                        logger.info(f"{display}: closed by TP/SL {pid}, slaves keep their own targets")
+                        try:
+                            event_queue.put({
+                                "type": "position_close",
+                                "data": {"master": display, "symbol": symbol, "ticket": pid, "reason": "target"},
+                            })
+                        except Exception:
+                            pass
+                    else:
+                        logger.info(f"{display}: manual close {pid}, sending CLOSE to slaves")
+                        cmd = {
+                            "action": "CLOSE",
+                            "payload": {
+                                "position_ticket": hash(pid) % 1000000,
+                                "symbol": symbol,
+                                "direction": p.get("direction", "BUY"),
+                                "contracts": p.get("contracts", 1),
+                                "master_account_id": account_id,
+                                "bridge_host": bridge_host,
+                                "bridge_port": bridge_port,
+                                "nt8_position_id": pid,
+                            },
+                        }
+                        for q in slave_queues.values():
+                            if not stop_flag.is_set():
+                                q.put(cmd)
+                        try:
+                            event_queue.put({
+                                "type": "position_close",
+                                "data": {"master": display, "symbol": symbol, "ticket": pid, "reason": "manual"},
+                            })
+                        except Exception:
+                            pass
 
             for pid, cur in cur_positions.items():
                 if pid in prev_positions:
@@ -215,7 +232,6 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
 
             prev_positions = cur_positions
 
-            cur_orders = {str(o.get("ticket", hash(str(o)))): o for o in conn.get_orders(login)}
             for ot, o in cur_orders.items():
                 if ot not in prev_orders:
                     logger.info(f"{display}: new pending order {ot} {o.get('symbol')} {o.get('type')} {o.get('direction')}")
@@ -461,6 +477,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),
                            payload.get("contracts", 0), 0, None, None, TradeResult.FAILED,
                            master_ticket=master_ticket, slave_ticket=hash(slave_position_id) % 1000000)
+                logger.error(f"{display}: CLOSE FAIL {payload.get('symbol','?')} | {result.get('error', 'no result') if result else 'result is None'}")
 
         elif action == "MODIFY":
             master_ticket = payload["position_ticket"]

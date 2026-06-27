@@ -22,6 +22,7 @@ class AccountCreate(AccountBase):
 
 class AccountUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
+    role: Optional[AccountRole] = None
     login: Optional[str] = None
     password: Optional[str] = None
     bridge_host: Optional[str] = None
