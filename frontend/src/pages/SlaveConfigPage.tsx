@@ -5,7 +5,7 @@ import { Input, Select, Label, Checkbox, Switch } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { api } from '../lib/api';
 import { useStore } from '../store';
-import type { Account, SlaveConfig } from '../types';
+import type { Account, SlaveConfig, SlaveTemplate } from '../types';
 import { HelpCircle } from 'lucide-react';
 
 export default function SlaveConfigPage() {
@@ -14,11 +14,17 @@ export default function SlaveConfigPage() {
   const [config, setConfig] = useState<SlaveConfig | null>(null);
   const [linkedMasters, setLinkedMasters] = useState<string[]>([]);
   const [showRiskHelp, setShowRiskHelp] = useState(false);
+  const [templates, setTemplates] = useState<SlaveTemplate[]>([]);
+  const [activeTemplateId, setActiveTemplateId] = useState('');
 
   const slaves = accounts.filter(a => a.role === 'SLAVE');
   const masters = accounts.filter(a => a.role === 'MASTER');
 
-  useEffect(() => { fetchAccounts(); }, []);
+  useEffect(() => { fetchAccounts(); fetchTemplates(); }, []);
+
+  const fetchTemplates = async () => {
+    try { setTemplates(await api.get<SlaveTemplate[]>('/templates')); } catch {}
+  };
 
   const selectSlave = async (slave: Account) => {
     setSelectedSlave(slave);
@@ -29,6 +35,19 @@ export default function SlaveConfigPage() {
       ]);
       setConfig(cfg);
       setLinkedMasters(links.map(l => l.master_id));
+      const match = templates.find(t =>
+        t.risk_mode === cfg.risk_mode &&
+        t.fixed_contracts === cfg.fixed_contracts &&
+        t.risk_percent === cfg.risk_percent &&
+        t.risk_usd === (cfg.risk_usd ?? 50) &&
+        t.lot_multiplier === cfg.lot_multiplier &&
+        t.max_contracts === cfg.max_contracts &&
+        t.max_positions === cfg.max_positions &&
+        t.autocopy_enable === cfg.autocopy_enable &&
+        t.delay_sec === cfg.delay_sec &&
+        t.magic_number === (cfg.magic_number ?? 0)
+      );
+      setActiveTemplateId(match?.id || '');
     } catch { showToast('Error cargando config', 'error'); }
   };
 
@@ -44,6 +63,34 @@ export default function SlaveConfigPage() {
 
   const toggleMaster = (masterId: string) => {
     setLinkedMasters(prev => prev.includes(masterId) ? prev.filter(id => id !== masterId) : [...prev, masterId]);
+  };
+
+  const applyTemplate = (templateId: string) => {
+    const t = templates.find(tp => tp.id === templateId);
+    if (!t || !config) return;
+    setActiveTemplateId(templateId);
+    setConfig({
+      ...config,
+      risk_mode: t.risk_mode,
+      fixed_contracts: t.fixed_contracts,
+      risk_percent: t.risk_percent,
+      risk_usd: t.risk_usd,
+      lot_multiplier: t.lot_multiplier,
+      max_contracts: t.max_contracts,
+      max_positions: t.max_positions,
+      autocopy_enable: t.autocopy_enable,
+      copy_sl: t.copy_sl,
+      copy_tp: t.copy_tp,
+      inverse_copy: t.inverse_copy,
+      delay_sec: t.delay_sec,
+      magic_number: t.magic_number,
+    });
+  };
+
+  const updateConfig = (patch: Partial<SlaveConfig>) => {
+    if (!config) return;
+    setActiveTemplateId('');
+    setConfig({ ...config, ...patch });
   };
 
   return (
@@ -86,10 +133,22 @@ export default function SlaveConfigPage() {
             </div>
           </div>
 
+          {templates.length > 0 && (
+            <div>
+              <Label>Cargar Plantilla</Label>
+              <Select value={activeTemplateId} onChange={e => { if (e.target.value) applyTemplate(e.target.value); }}>
+                <option value="">Seleccionar plantilla...</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </Select>
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-4">
             <div>
               <div className="flex items-center gap-1 mb-1"><Label>Modo de Riesgo</Label><button onClick={() => setShowRiskHelp(!showRiskHelp)} className="text-zinc-500 hover:text-zinc-300" title="Ayuda"><HelpCircle size={14} /></button></div>
-              <Select value={config.risk_mode} onChange={e => setConfig({...config, risk_mode: e.target.value as SlaveConfig['risk_mode']})}>
+              <Select value={config.risk_mode} onChange={e => updateConfig({risk_mode: e.target.value as SlaveConfig['risk_mode']})}>
                 <option value="FIXED">Contratos Fijos</option>
                 <option value="RISK_PERCENT">% Riesgo del Balance</option>
                 <option value="RISK_USD">Riesgo USD Fijo</option>
@@ -109,15 +168,15 @@ export default function SlaveConfigPage() {
               </div>
             )}
 
-            {config.risk_mode === 'FIXED' && <div><Label>Contratos Fijos</Label><Input type="number" value={config.fixed_contracts} onChange={e => setConfig({...config, fixed_contracts: Number(e.target.value)})} /></div>}
-            {config.risk_mode === 'RISK_PERCENT' && <div><Label>% Riesgo</Label><Input type="number" step="0.1" value={config.risk_percent} onChange={e => setConfig({...config, risk_percent: Number(e.target.value)})} /></div>}
-            {config.risk_mode === 'RISK_USD' && <div><Label>Riesgo USD</Label><Input type="number" step="1" value={config.risk_usd ?? 50} onChange={e => setConfig({...config, risk_usd: Number(e.target.value)})} /></div>}
-            {config.risk_mode === 'RATIO' && <div><Label>Multiplicador</Label><Input type="number" step="0.1" value={config.lot_multiplier} onChange={e => setConfig({...config, lot_multiplier: Number(e.target.value)})} /></div>}
+            {config.risk_mode === 'FIXED' && <div><Label>Contratos Fijos</Label><Input type="number" value={config.fixed_contracts} onChange={e => updateConfig({fixed_contracts: Number(e.target.value)})} /></div>}
+            {config.risk_mode === 'RISK_PERCENT' && <div><Label>% Riesgo</Label><Input type="number" step="0.1" value={config.risk_percent} onChange={e => updateConfig({risk_percent: Number(e.target.value)})} /></div>}
+            {config.risk_mode === 'RISK_USD' && <div><Label>Riesgo USD</Label><Input type="number" step="1" value={config.risk_usd ?? 50} onChange={e => updateConfig({risk_usd: Number(e.target.value)})} /></div>}
+            {config.risk_mode === 'RATIO' && <div><Label>Multiplicador</Label><Input type="number" step="0.1" value={config.lot_multiplier} onChange={e => updateConfig({lot_multiplier: Number(e.target.value)})} /></div>}
 
-            <div><Label>Max Contratos</Label><Input type="number" value={config.max_contracts} onChange={e => setConfig({...config, max_contracts: Number(e.target.value)})} /></div>
-            <div><Label>Max Posiciones</Label><Input type="number" value={config.max_positions} onChange={e => setConfig({...config, max_positions: Number(e.target.value)})} /></div>
-            <div><Label>Delay (seg)</Label><Input type="number" step="0.1" value={config.delay_sec} onChange={e => setConfig({...config, delay_sec: Number(e.target.value)})} /></div>
-            <div><Label>Magic Number</Label><Input type="number" value={config.magic_number ?? 0} onChange={e => setConfig({...config, magic_number: Number(e.target.value)})} /></div>
+            <div><Label>Max Contratos</Label><Input type="number" value={config.max_contracts} onChange={e => updateConfig({max_contracts: Number(e.target.value)})} /></div>
+            <div><Label>Max Posiciones</Label><Input type="number" value={config.max_positions} onChange={e => updateConfig({max_positions: Number(e.target.value)})} /></div>
+            <div><Label>Delay (seg)</Label><Input type="number" step="0.1" value={config.delay_sec} onChange={e => updateConfig({delay_sec: Number(e.target.value)})} /></div>
+            <div><Label>Magic Number</Label><Input type="number" value={config.magic_number ?? 0} onChange={e => updateConfig({magic_number: Number(e.target.value)})} /></div>
           </div>
 
           <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-700 bg-zinc-800/30">
@@ -125,7 +184,7 @@ export default function SlaveConfigPage() {
               <p className="text-sm font-medium text-white">AutoCopy</p>
               <p className="text-xs text-zinc-500">{config.autocopy_enable ? 'El slave esta copiando activamente' : 'El slave no copiara operaciones'}</p>
             </div>
-            <Switch checked={config.autocopy_enable} onChange={v => setConfig({...config, autocopy_enable: v})} />
+            <Switch checked={config.autocopy_enable} onChange={v => updateConfig({autocopy_enable: v})} />
             {false && <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_sl} onChange={e => setConfig({...config, copy_sl: e.target.checked})} />Copiar SL</label>}
             {false && <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_tp} onChange={e => setConfig({...config, copy_tp: e.target.checked})} />Copiar TP</label>}
             {false && <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.inverse_copy} onChange={e => setConfig({...config, inverse_copy: e.target.checked})} />Copia Inversa</label>}

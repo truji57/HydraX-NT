@@ -5,6 +5,7 @@ import AccountsPage from './pages/AccountsPage';
 import SlaveConfigPage from './pages/SlaveConfigPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
+import TemplatesPage from './pages/TemplatesPage';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/slaves" element={<SlaveConfigPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/templates" element={<TemplatesPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

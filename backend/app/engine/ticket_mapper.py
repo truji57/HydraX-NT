@@ -128,4 +128,41 @@ def get_slave_ticket(master_ticket: int, slave_account_id: str) -> str | None:
         return None
     finally:
         db.close()
+
+
+def reconcile_stale_positions() -> int:
+    from app.models.account import Account
+    from app.engine.nt8_connector import NT8Connector
+
+    fixed = 0
+    db = SessionLocal()
+    try:
+        slaves = db.query(Account).filter(Account.role == "SLAVE", Account.active == True).all()
+
+        for slave in slaves:
+            try:
+                conn = NT8Connector(slave.bridge_host, slave.bridge_port)
+                positions = conn.get_positions(slave.login)
+                real_ids = {p.get("id", "") for p in positions}
+
+                open_entries = db.query(TicketMap).filter(
+                    TicketMap.slave_account_id == slave.id,
+                    TicketMap.status == TicketStatus.OPEN,
+                ).all()
+
+                for entry in open_entries:
+                    if str(entry.slave_ticket) not in real_ids:
+                        entry.status = TicketStatus.CLOSED
+                        entry.closed_at = datetime.utcnow()
+                        fixed += 1
+                        logger.info(f"Reconciled: slave={slave.name} ticket={entry.slave_ticket} -> CLOSED")
+
+                conn.disconnect()
+            except Exception:
+                pass
+
+        db.commit()
+    finally:
         db.close()
+
+    return fixed

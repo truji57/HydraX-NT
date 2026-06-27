@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, ArrowLeftRight, History, Settings, Play, Square, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, ArrowLeftRight, History, Settings, Play, Square, Activity, Layers } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store';
 import { api } from '../../lib/api';
@@ -10,6 +10,7 @@ const links = [
   { to: '/slaves', icon: ArrowLeftRight, label: 'Slaves' },
   { to: '/history', icon: History, label: 'Historial' },
   { to: '/settings', icon: Settings, label: 'Ajustes' },
+  { to: '/templates', icon: Layers, label: 'Plantillas' },
 ];
 
 export function Sidebar() {

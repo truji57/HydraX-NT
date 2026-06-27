@@ -69,6 +69,15 @@ class CopierOrchestrator:
             self._clear_state()
             self._event_queue = mp.Queue()
 
+            fixed = 0
+            try:
+                from app.engine.ticket_mapper import reconcile_stale_positions
+                fixed = reconcile_stale_positions()
+                if fixed:
+                    logger.info(f"Auto-sync: {fixed} posiciones reconciliadas")
+            except Exception:
+                pass
+
             db = SessionLocal()
             try:
                 masters = db.query(Account).filter(Account.role == "MASTER", Account.active == True).all()
@@ -127,7 +136,7 @@ class CopierOrchestrator:
                     master_cfg = {
                         "account_id": master.id, "name": master.name,
                         "bridge_host": master.bridge_host, "bridge_port": master.bridge_port,
-                        "login": master.login, "poll_interval": master.poll_interval or 0.5,
+                        "login": master.login, "poll_interval": max(master.poll_interval or 0.5, 0.1),
                     }
                     self._master_configs[master.id] = master_cfg
 
@@ -135,7 +144,7 @@ class CopierOrchestrator:
                         target=nt8_master_monitor,
                         args=(
                             master.id, master.name, master.bridge_host, master.bridge_port,
-                            master.login, master.poll_interval or 0.5,
+                            master.login, max(master.poll_interval or 0.5, 0.1),
                             self._slave_queues, stop_flag, self._event_queue,
                         ),
                         name=f"master-{master.id}",

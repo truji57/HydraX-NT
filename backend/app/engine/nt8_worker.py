@@ -71,6 +71,8 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
 
     logger.info(f"{display}: connected to NT8 bridge")
 
+    poll = max(poll_interval, 0.1)
+
     prev_positions = {}
     positions = conn.get_positions(login)
     for p in positions:
@@ -215,7 +217,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                         pass
             prev_orders = cur_orders
 
-            for _ in range(int(poll_interval * 10)):
+            for _ in range(int(poll * 10)):
                 if stop_flag.is_set():
                     break
                 time.sleep(0.1)

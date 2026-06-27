@@ -65,3 +65,23 @@ export interface TestResult {
   balance: number | null;
   server: string | null;
 }
+
+export interface SlaveTemplate {
+  id: string;
+  name: string;
+  risk_mode: RiskMode;
+  fixed_contracts: number;
+  risk_percent: number;
+  risk_usd: number;
+  lot_multiplier: number;
+  max_contracts: number;
+  max_positions: number;
+  autocopy_enable: boolean;
+  copy_sl: boolean;
+  copy_tp: boolean;
+  inverse_copy: boolean;
+  delay_sec: number;
+  magic_number: number;
+  created_at: string;
+  updated_at: string;
+}

@@ -32,11 +32,13 @@ from app.api.accounts import router as accounts_router
 from app.api.copier import router as copier_router
 from app.api.trades import router as trades_router
 from app.api.system import router as system_router
+from app.api.templates import router as templates_router
 
 app.include_router(accounts_router)
 app.include_router(copier_router)
 app.include_router(trades_router)
 app.include_router(system_router)
+app.include_router(templates_router)
 
 
 @app.websocket("/ws/dashboard")

@@ -92,3 +92,25 @@ class SlaveMasterLink(Base):
 
     slave = relationship("Account", foreign_keys=[slave_id], back_populates="master_links")
     master = relationship("Account", foreign_keys=[master_id], back_populates="slave_links")
+
+
+class SlaveTemplate(Base):
+    __tablename__ = "slave_templates"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    name = Column(String(100), nullable=False, unique=True)
+    risk_mode = Column(Enum(RiskMode), default=RiskMode.FIXED)
+    fixed_contracts = Column(Integer, default=1)
+    risk_percent = Column(Float, default=0.5)
+    risk_usd = Column(Float, default=50.0)
+    lot_multiplier = Column(Float, default=1.0)
+    max_contracts = Column(Integer, default=100)
+    max_positions = Column(Integer, default=100)
+    autocopy_enable = Column(Boolean, default=True)
+    copy_sl = Column(Boolean, default=True)
+    copy_tp = Column(Boolean, default=True)
+    inverse_copy = Column(Boolean, default=False)
+    delay_sec = Column(Float, default=0.0)
+    magic_number = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -28,11 +28,11 @@
 ## 🔴 Pendientes (próxima sesión)
 
 - [x] Auto-reinicio de workers muertos en el orchestrator
-- [ ] Reconciliación automática al iniciar (llamar /sync)
+- [x] Reconciliación automática al iniciar (llamar /sync)
 - [ ] Tests con cuentas live (no solo Sim)
 - [x] Soporte para múltiples instrumentos simultáneos
 - [ ] Mejorar la UI de eventos (filtros, búsqueda)
-- [ ] Notificaciones (Telegram/Email)
+- [ ] QUe los masters tengan un color independiente cada uno personalizable, ese color se mostrara en las pequeñas etiquetas que tienen cada slave de a que master estan copiando y ademas en la tarjeta de cada master en el dashboard que aparezca ese color por algun lado
 
 ## 🔵 Ideas futuro
 
