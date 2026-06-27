@@ -70,3 +70,36 @@ def emergency_close(slave_id: str, db: Session = Depends(get_db)):
     db.commit()
     conn.disconnect()
     return {"ok": True, "closed": closed, "errors": errors, "total": len(positions)}
+
+
+@router.post("/sync")
+def sync_positions(db: Session = Depends(get_db)):
+    from app.models.account import Account
+    from app.engine.nt8_connector import NT8Connector
+
+    fixed = 0
+    slaves = db.query(Account).filter(Account.role == "SLAVE", Account.active == True).all()
+
+    for slave in slaves:
+        try:
+            conn = NT8Connector(slave.bridge_host, slave.bridge_port)
+            positions = conn.get_positions(slave.login)
+            real_tickets = {p.get("id", "") for p in positions}
+
+            open_entries = db.query(TicketMap).filter(
+                TicketMap.slave_account_id == slave.id,
+                TicketMap.status == TicketStatus.OPEN,
+            ).all()
+
+            for entry in open_entries:
+                if str(entry.slave_ticket) not in real_tickets:
+                    entry.status = TicketStatus.CLOSED
+                    fixed += 1
+
+            conn.disconnect()
+        except Exception:
+            pass
+
+    db.commit()
+    remaining = db.query(TicketMap).filter(TicketMap.status == TicketStatus.OPEN).count()
+    return {"ok": True, "fixed": fixed, "remaining_open": remaining}
