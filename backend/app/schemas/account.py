@@ -7,7 +7,7 @@ from app.models.account import AccountRole, RiskMode
 class AccountBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     role: AccountRole
-    login: int = Field(..., gt=0)
+    login: str = Field(..., min_length=1)
     password: str
     bridge_host: str = "localhost"
     bridge_port: int = 5555
@@ -21,7 +21,7 @@ class AccountCreate(AccountBase):
 
 class AccountUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    login: Optional[int] = Field(None, gt=0)
+    login: Optional[str] = None
     password: Optional[str] = None
     bridge_host: Optional[str] = None
     bridge_port: Optional[int] = None
@@ -33,7 +33,7 @@ class AccountResponse(BaseModel):
     id: str
     name: str
     role: AccountRole
-    login: int
+    login: str
     bridge_host: str
     bridge_port: int
     poll_interval: float

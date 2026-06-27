@@ -18,7 +18,7 @@ logger = get_logger("hydrax.nt8")
 
 
 def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port: int,
-                       login: int, poll_interval: float,
+                       login: str, poll_interval: float,
                        slave_queues: dict, stop_flag: mp.Event, event_queue: mp.Queue):
     display = name or f"nt8-master-{login}"
     conn = NT8Connector(bridge_host, bridge_port)
@@ -30,7 +30,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
     logger.info(f"{display}: connected to NT8 bridge")
 
     prev_positions = {}
-    positions = conn.get_positions(display)
+    positions = conn.get_positions(login)
     for p in positions:
         pid = p.get("id", str(hash(str(p))))
         prev_positions[pid] = p
@@ -144,7 +144,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
     logger.info(f"{display}: monitor stopped")
 
 
-def nt8_slave_executor(account_id: str, name: str, bridge_host: str, bridge_port: int,
+def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str, bridge_port: int,
                        risk_mode: str, risk_percent: float, risk_usd: float,
                        fixed_contracts: int, lot_multiplier: float, max_contracts: int,
                        max_positions: int, autocopy_enable: bool, copy_sl: bool,
@@ -223,7 +223,7 @@ def nt8_slave_executor(account_id: str, name: str, bridge_host: str, bridge_port
             if max_contracts > 0 and contracts > max_contracts:
                 contracts = max_contracts
 
-            result = conn.open_position(symbol, contracts, direction, sl, tp, magic_number, account=display)
+            result = conn.open_position(symbol, contracts, direction, sl, tp, magic_number, account=login)
             if result and result.get("ok"):
                 slave_ticket = result.get("position_id", 0)
                 confirm_open(master_ticket, account_id, slave_ticket)
@@ -246,7 +246,7 @@ def nt8_slave_executor(account_id: str, name: str, bridge_host: str, bridge_port
                 continue
 
             nt8_pid = payload.get("nt8_position_id", str(slave_ticket))
-            result = conn.close_position(str(nt8_pid), account=display)
+            result = conn.close_position(str(nt8_pid), account=login)
             if result and result.get("ok"):
                 mark_closed(master_ticket, account_id)
                 logger.info(f"{display}: CLOSE OK {payload.get('symbol','?')}")

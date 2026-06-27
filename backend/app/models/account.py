@@ -31,7 +31,7 @@ class Account(Base):
     id = Column(String, primary_key=True, default=gen_uuid)
     name = Column(String(100), nullable=False)
     role = Column(Enum(AccountRole), nullable=False)
-    login = Column(Integer, nullable=False)
+    login = Column(String(50), nullable=False)
     password = Column(Text, nullable=False)
     bridge_host = Column(String(100), default="localhost")
     bridge_port = Column(Integer, default=5555)

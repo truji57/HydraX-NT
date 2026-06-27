@@ -56,7 +56,7 @@ def test_account(account_id: str, db: Session = Depends(get_db)):
         s = socket.socket()
         s.settimeout(3)
         s.connect((acc.bridge_host, acc.bridge_port))
-        s.sendall(json.dumps({"action": "ACCOUNT", "account": acc.name}).encode() + b"\n")
+        s.sendall(json.dumps({"action": "ACCOUNT", "account": acc.login}).encode() + b"\n")
         resp = b""
         while b"\n" not in resp:
             chunk = s.recv(4096)

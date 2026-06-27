@@ -83,7 +83,7 @@ class CopierOrchestrator:
                     p = mp.Process(
                         target=nt8_slave_executor,
                         args=(
-                            slave.id, slave.name, slave.bridge_host, slave.bridge_port,
+                            slave.id, slave.name, slave.login, slave.bridge_host, slave.bridge_port,
                             config.risk_mode.value if config.risk_mode else "FIXED",
                             config.risk_percent or 0.5, config.risk_usd or 50.0,
                             config.fixed_contracts or 1, config.lot_multiplier or 1.0,
