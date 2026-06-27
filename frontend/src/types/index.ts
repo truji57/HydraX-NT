@@ -12,6 +12,7 @@ export interface Account {
   active: boolean;
   created_at: string;
   updated_at: string;
+  linked_masters: string[];
 }
 
 export interface AccountForm {

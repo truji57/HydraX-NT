@@ -22,6 +22,11 @@ namespace NinjaTrader.NinjaScript.AddOns
         private Thread _serverThread;
         private JavaScriptSerializer _json = new JavaScriptSerializer();
 
+        private Dictionary<string, string> _posIdMap = new Dictionary<string, string>();
+        private Dictionary<string, string> _idToKey = new Dictionary<string, string>();
+        private int _posIdCounter = 0;
+        private readonly object _posIdLock = new object();
+
         protected override void OnStateChange()
         {
             if (State == State.SetDefaults)
@@ -143,6 +148,68 @@ namespace NinjaTrader.NinjaScript.AddOns
             return Account.All.FirstOrDefault();
         }
 
+        private string MakePositionKey(Account acc, Position p)
+        {
+            return acc.Name + "|" + p.Instrument.FullName;
+        }
+
+        private string GetOrAssignPositionId(Account acc, Position p)
+        {
+            string key = MakePositionKey(acc, p);
+            lock (_posIdLock)
+            {
+                if (!_posIdMap.ContainsKey(key))
+                {
+                    string id = "hp_" + (++_posIdCounter);
+                    _posIdMap[key] = id;
+                    _idToKey[id] = key;
+                }
+                return _posIdMap[key];
+            }
+        }
+
+        private Position FindPositionById(Account acc, string positionId)
+        {
+            lock (_posIdLock)
+            {
+                if (_idToKey.TryGetValue(positionId, out string key))
+                {
+                    string[] parts = key.Split('|');
+                    if (parts.Length >= 2 && parts[0] == acc.Name)
+                    {
+                        string instrument = parts[1];
+                        return acc.Positions.FirstOrDefault(p =>
+                            p.Instrument.FullName == instrument && p.Quantity != 0);
+                    }
+                }
+            }
+            return null;
+        }
+
+        private void CleanupStalePositionIds(Account acc)
+        {
+            lock (_posIdLock)
+            {
+                var currentKeys = new HashSet<string>(
+                    acc.Positions.Where(p => p.Quantity != 0)
+                        .Select(p => MakePositionKey(acc, p))
+                );
+
+                var staleKeys = _posIdMap.Keys
+                    .Where(k => k.StartsWith(acc.Name + "|") && !currentKeys.Contains(k))
+                    .ToList();
+
+                foreach (var k in staleKeys)
+                {
+                    if (_posIdMap.TryGetValue(k, out string id))
+                    {
+                        _posIdMap.Remove(k);
+                        _idToKey.Remove(id);
+                    }
+                }
+            }
+        }
+
         private string GetAccountInfo(Dictionary<string, object> cmd)
         {
             var acc = GetAccount(cmd);
@@ -197,10 +264,11 @@ namespace NinjaTrader.NinjaScript.AddOns
             var acc = GetAccount(cmd);
             if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
 
+            CleanupStalePositionIds(acc);
+
             var list = new List<Dictionary<string, object>>();
             foreach (var p in acc.Positions.Where(p => p.Quantity != 0))
             {
-                // Find attached SL/TP orders
                 double sl = 0, tp = 0;
                 foreach (var o in acc.Orders.Where(o => o.Instrument == p.Instrument &&
                     (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)))
@@ -211,6 +279,8 @@ namespace NinjaTrader.NinjaScript.AddOns
                         tp = o.LimitPrice;
                 }
 
+                string pid = GetOrAssignPositionId(acc, p);
+
                 list.Add(new Dictionary<string, object>
                 {
                     ["symbol"] = p.Instrument.FullName,
@@ -219,7 +289,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                     ["entry_price"] = p.AveragePrice,
                     ["sl"] = sl,
                     ["tp"] = tp,
-                    ["id"] = acc.Name + "_" + p.Instrument.FullName + "_" + p.AveragePrice.ToString("F0"),
+                    ["id"] = pid,
                 });
             }
 
@@ -323,43 +393,45 @@ namespace NinjaTrader.NinjaScript.AddOns
 
             try
             {
-                string symbol = cmd["symbol"].ToString();
+                string symbol = cmd.ContainsKey("symbol") ? cmd["symbol"].ToString() : "";
                 double sl = cmd.ContainsKey("sl") ? Convert.ToDouble(cmd["sl"]) : 0;
                 double tp = cmd.ContainsKey("tp") ? Convert.ToDouble(cmd["tp"]) : 0;
                 string magic = cmd.ContainsKey("magic") ? cmd["magic"].ToString() : "0";
+                string positionId = cmd.ContainsKey("position_id") ? cmd["position_id"].ToString() : "";
 
-                var instrument = Instrument.GetInstrument(symbol);
-                if (instrument == null) return "{\"ok\":false,\"error\":\"Symbol not found\"}";
+                Position pos = null;
+                if (!string.IsNullOrEmpty(positionId))
+                    pos = FindPositionById(acc, positionId);
+                if (pos == null && !string.IsNullOrEmpty(symbol))
+                    pos = acc.Positions.FirstOrDefault(p => p.Instrument.FullName == symbol && p.Quantity != 0);
 
-                // Cancel existing SL/TP orders for this instrument
+                if (pos == null) return "{\"ok\":false,\"error\":\"Position not found\"}";
+
+                var instrument = pos.Instrument;
+
                 foreach (var o in acc.Orders.Where(o => o.Instrument == instrument &&
                     (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)).ToList())
                 {
                     if (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)
                     {
                         acc.Cancel(new[] { o });
-                        Log("HydraX: Cancelled " + o.OrderType + " for " + symbol + " on " + acc.Name, LogLevel.Information);
+                        Log("HydraX: Cancelled " + o.OrderType + " for " + instrument.FullName + " on " + acc.Name, LogLevel.Information);
                     }
                 }
 
-                // Place new SL/TP
-                var pos = acc.Positions.FirstOrDefault(p => p.Instrument == instrument && p.Quantity != 0);
-                if (pos != null)
+                if (sl > 0)
                 {
-                    if (sl > 0)
-                    {
-                        var slAction = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.Buy;
-                        var slOrder = acc.CreateOrder(instrument, slAction, OrderType.StopMarket,
-                            TimeInForce.Gtc, Math.Abs(pos.Quantity), 0, sl, "", "HydraX-SL-" + magic, null);
-                        if (slOrder != null) acc.Submit(new[] { slOrder });
-                    }
-                    if (tp > 0)
-                    {
-                        var tpAction = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.Buy;
-                        var tpOrder = acc.CreateOrder(instrument, tpAction, OrderType.Limit,
-                            TimeInForce.Gtc, Math.Abs(pos.Quantity), tp, 0, "", "HydraX-TP-" + magic, null);
-                        if (tpOrder != null) acc.Submit(new[] { tpOrder });
-                    }
+                    var slAction = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.Buy;
+                    var slOrder = acc.CreateOrder(instrument, slAction, OrderType.StopMarket,
+                        TimeInForce.Gtc, Math.Abs(pos.Quantity), 0, sl, "", "HydraX-SL-" + magic, null);
+                    if (slOrder != null) acc.Submit(new[] { slOrder });
+                }
+                if (tp > 0)
+                {
+                    var tpAction = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.Buy;
+                    var tpOrder = acc.CreateOrder(instrument, tpAction, OrderType.Limit,
+                        TimeInForce.Gtc, Math.Abs(pos.Quantity), tp, 0, "", "HydraX-TP-" + magic, null);
+                    if (tpOrder != null) acc.Submit(new[] { tpOrder });
                 }
 
                 return "{\"ok\":true}";
@@ -376,45 +448,47 @@ namespace NinjaTrader.NinjaScript.AddOns
 
             try
             {
+                string positionId = cmd.ContainsKey("position_id") ? cmd["position_id"].ToString() : "";
                 string symbol = cmd.ContainsKey("symbol") ? cmd["symbol"].ToString() : "";
-                int closed = 0;
 
-                var positions = acc.Positions.Where(p => p.Quantity != 0);
-                if (!string.IsNullOrEmpty(symbol))
-                    positions = positions.Where(p => p.Instrument.FullName == symbol);
+                Position pos = null;
+                if (!string.IsNullOrEmpty(positionId))
+                    pos = FindPositionById(acc, positionId);
 
-                foreach (var pos in positions.ToList())
+                if (pos == null && !string.IsNullOrEmpty(symbol))
+                    pos = acc.Positions.FirstOrDefault(p => p.Instrument.FullName == symbol && p.Quantity != 0);
+
+                if (pos == null)
+                    return "{\"ok\":false,\"error\":\"Position not found\"}";
+
+                var instrument = pos.Instrument;
+
+                foreach (var o in acc.Orders.Where(o => o.Instrument == instrument &&
+                    (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted) &&
+                    (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)).ToList())
                 {
-                    var instrument = pos.Instrument;
-
-                    // Cancel SL/TP orders first
-                    foreach (var o in acc.Orders.Where(o => o.Instrument == instrument &&
-                        (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted) &&
-                        (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)).ToList())
-                    {
-                        acc.Cancel(new[] { o });
-                    }
-
-                    var orderAction = pos.MarketPosition == MarketPosition.Long
-                        ? OrderAction.Sell : OrderAction.Buy;
-
-                    var order = acc.CreateOrder(
-                        pos.Instrument,
-                        orderAction,
-                        OrderType.Market,
-                        TimeInForce.Gtc,
-                        Math.Abs(pos.Quantity),
-                        0, 0, "", "HydraX Close", null
-                    );
-
-                    if (order != null)
-                    {
-                        acc.Submit(new[] { order });
-                        closed++;
-                    }
+                    acc.Cancel(new[] { o });
                 }
 
-                return "{\"ok\":true,\"closed\":" + closed + "}";
+                var orderAction = pos.MarketPosition == MarketPosition.Long
+                    ? OrderAction.Sell : OrderAction.Buy;
+
+                var order = acc.CreateOrder(
+                    instrument,
+                    orderAction,
+                    OrderType.Market,
+                    TimeInForce.Gtc,
+                    Math.Abs(pos.Quantity),
+                    0, 0, "", "HydraX Close", null
+                );
+
+                if (order != null)
+                {
+                    acc.Submit(new[] { order });
+                    return "{\"ok\":true,\"closed\":1}";
+                }
+
+                return "{\"ok\":false,\"error\":\"CreateOrder returned null\"}";
             }
             catch (Exception ex)
             {

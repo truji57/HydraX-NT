@@ -345,7 +345,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
 
             result = conn.open_position(symbol, contracts, direction, sl, tp, _config["magic_number"], account=login)
             if result and result.get("ok"):
-                slave_ticket = result.get("position_id", 0)
+                slave_ticket = str(result.get("position_id", ""))
                 confirm_open(master_ticket, account_id, slave_ticket)
                 _log_trade(master_account_id, account_id, TradeAction.OPEN, symbol, contracts,
                            payload.get("price", 0), sl, tp, TradeResult.SUCCESS,
@@ -365,31 +365,30 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
 
         elif action == "CLOSE":
             master_ticket = payload["position_ticket"]
-            slave_ticket = get_slave_ticket(master_ticket, account_id)
-            if not slave_ticket:
+            slave_position_id = get_slave_ticket(master_ticket, account_id)
+            if not slave_position_id:
                 logger.warning(f"{display}: no mapping for master_ticket={master_ticket}")
                 continue
 
-            nt8_pid = payload.get("nt8_position_id", str(slave_ticket))
             symbol = payload.get("symbol", "")
-            result = conn.close_position(str(nt8_pid), symbol, account=login)
+            result = conn.close_position(slave_position_id, symbol, account=login)
             if result and result.get("ok"):
                 mark_closed(master_ticket, account_id)
                 _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),
                            payload.get("contracts", 0), 0, None, None, TradeResult.SUCCESS,
-                           master_ticket=master_ticket, slave_ticket=slave_ticket)
+                           master_ticket=master_ticket, slave_ticket=hash(slave_position_id) % 1000000)
                 _emit_event(event_queue, "copy_ok", {"slave": display, "symbol": payload.get("symbol", ""),
                            "action": "CLOSE", "master_ticket": master_ticket})
                 logger.info(f"{display}: CLOSE OK {payload.get('symbol','?')}")
             else:
                 _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),
                            payload.get("contracts", 0), 0, None, None, TradeResult.FAILED,
-                           master_ticket=master_ticket, slave_ticket=slave_ticket)
+                           master_ticket=master_ticket, slave_ticket=hash(slave_position_id) % 1000000)
 
         elif action == "MODIFY":
             master_ticket = payload["position_ticket"]
-            slave_ticket_from_map = get_slave_ticket(master_ticket, account_id)
-            if not slave_ticket_from_map:
+            slave_position_id = get_slave_ticket(master_ticket, account_id)
+            if not slave_position_id:
                 continue
 
             symbol = payload.get("symbol", "")
@@ -404,11 +403,12 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
 
             result = conn.modify_position(symbol, new_sl if _config["copy_sl"] else 0,
                                           new_tp if _config["copy_tp"] else 0,
-                                          _config["magic_number"], account=login)
+                                          _config["magic_number"], account=login,
+                                          position_id=slave_position_id)
             if result and result.get("ok"):
                 _log_trade(master_account_id, account_id, TradeAction.MODIFY, symbol, 0, 0,
                            new_sl, new_tp, TradeResult.SUCCESS,
-                           master_ticket=master_ticket, slave_ticket=slave_ticket_from_map)
+                           master_ticket=master_ticket, slave_ticket=hash(slave_position_id) % 1000000)
                 _emit_event(event_queue, "copy_ok", {"slave": display, "symbol": symbol, "action": "MODIFY"})
                 logger.info(f"{display}: MODIFY OK {symbol} SL={new_sl} TP={new_tp}")
             else:

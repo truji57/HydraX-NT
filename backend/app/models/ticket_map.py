@@ -26,7 +26,7 @@ class TicketMap(Base):
     master_ticket = Column(Integer, nullable=False)
     master_account_id = Column(String, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     slave_account_id = Column(String, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
-    slave_ticket = Column(Integer, nullable=True)
+    slave_ticket = Column(String(100), nullable=True)
     symbol = Column(String(50), nullable=False)
     volume = Column(Float, nullable=False)
     price_open = Column(Float, nullable=False)

@@ -11,7 +11,7 @@ REM Kill any existing backend on port 8005
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8005 ^| findstr LISTENING') do taskkill /F /PID %%a 2>nul
 timeout /t 2 /nobreak >nul
 
-start "HydraX-NT Backend" cmd /k "cd /d %~dp0backend && C:\Users\danit\AppData\Local\Programs\Python\Python311\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8005"
+start "HydraX-NT Backend" cmd /k "cd /d %~dp0backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8005"
 timeout /t 3 /nobreak >nul
 start "HydraX-NT Frontend" cmd /c "cd /d %~dp0frontend && npx vite --host 0.0.0.0 --port 5173"
 timeout /t 2 /nobreak >nul

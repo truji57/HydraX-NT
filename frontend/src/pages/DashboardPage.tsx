@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardValue } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { Switch } from '../components/ui/input';
 import { useStore } from '../store';
 import { api } from '../lib/api';
 import { TrendingUp, TrendingDown, Wallet, BarChart3, AlertTriangle, X } from 'lucide-react';
-import type { Account } from '../types';
+import type { Account, SlaveConfig } from '../types';
 
 export default function DashboardPage() {
   const { copierStatus, accounts, fetchStatus, logs } = useStore();
   const [confirmClose, setConfirmClose] = useState<Account | null>(null);
   const [closing, setClosing] = useState(false);
+  const [slaveConfigs, setSlaveConfigs] = useState<Record<string, SlaveConfig>>({});
 
   useEffect(() => {
     fetchStatus();
@@ -21,6 +23,30 @@ export default function DashboardPage() {
 
   const masters = accounts.filter(a => a.role === 'MASTER' && a.active);
   const slaves = accounts.filter(a => a.role === 'SLAVE' && a.active);
+
+  useEffect(() => {
+    slaves.forEach(async (s) => {
+      if (!slaveConfigs[s.id]) {
+        try {
+          const cfg = await api.get<SlaveConfig>(`/accounts/slaves/${s.id}/config`);
+          setSlaveConfigs(prev => ({ ...prev, [s.id]: cfg }));
+        } catch {}
+      }
+    });
+  }, [slaves.map(s => s.id).join(',')]);
+
+  const toggleAutocopy = async (slaveId: string, enabled: boolean) => {
+    const cfg = slaveConfigs[slaveId];
+    if (!cfg) return;
+    const updated = { ...cfg, autocopy_enable: enabled };
+    setSlaveConfigs(prev => ({ ...prev, [slaveId]: updated }));
+    try {
+      await api.put(`/accounts/slaves/${slaveId}/config`, updated);
+    } catch {
+      setSlaveConfigs(prev => ({ ...prev, [slaveId]: cfg }));
+      useStore.getState().showToast('Error al actualizar', 'error');
+    }
+  };
 
   const handleEmergencyClose = async () => {
     if (!confirmClose) return;
@@ -55,7 +81,7 @@ export default function DashboardPage() {
           {masters.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas master configuradas.</p>}
           {masters.map(m => (
             <Card key={m.id}><CardHeader><CardTitle>{m.name}</CardTitle><Badge variant="success">MASTER</Badge></CardHeader>
-              <div className="space-y-1 text-xs text-zinc-500"><p>Bridge: {m.bridge_host}:{m.bridge_port}</p><p>Poll: {m.poll_interval}s</p></div>
+              <p className="text-xs text-zinc-500">Cuenta: {m.login || '—'}</p>
             </Card>
           ))}
         </div>
@@ -64,16 +90,37 @@ export default function DashboardPage() {
       <div><h3 className="text-sm font-medium text-zinc-400 mb-3">Cuentas Slave</h3>
         <div className="grid grid-cols-3 gap-4">
           {slaves.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas slave configuradas.</p>}
-          {slaves.map(s => (
-            <Card key={s.id}><CardHeader><CardTitle>{s.name}</CardTitle><Badge variant="warning">SLAVE</Badge></CardHeader>
-              <div className="space-y-1 text-xs text-zinc-500"><p>Bridge: {s.bridge_host}:{s.bridge_port}</p></div>
+          {slaves.map(s => {
+            const autocopy = slaveConfigs[s.id]?.autocopy_enable ?? true;
+            return (
+            <Card key={s.id} className={!autocopy ? 'opacity-60 border-amber-800/40' : ''}><CardHeader className="mb-2">
+              <div className="flex items-center gap-2">
+                <CardTitle className={!autocopy ? 'text-zinc-500' : ''}>{s.name}</CardTitle>
+                <Badge variant="warning">SLAVE</Badge>
+                {!autocopy && <Badge variant="warning" className="!bg-amber-500/15 !text-amber-400 !border-amber-500/30">PAUSADO</Badge>}
+              </div>
+              <Switch
+                checked={autocopy}
+                onChange={(v) => toggleAutocopy(s.id, v)}
+              />
+            </CardHeader>
+              <div className={`space-y-1 text-xs ${!autocopy ? 'text-zinc-600' : 'text-zinc-500'}`}><p>Cuenta: {s.login || '—'}</p></div>
+              {(s.linked_masters || []).length > 0 && (
+                <div className="mt-2 flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] text-zinc-600">copia de</span>
+                  {s.linked_masters.map(m => (
+                    <span key={m} className={`text-[10px] px-1.5 py-0.5 rounded ${!autocopy ? 'bg-zinc-800/50 text-zinc-600' : 'bg-zinc-800 text-zinc-400'}`}>{m}</span>
+                  ))}
+                </div>
+              )}
               <div className="mt-3 pt-3 border-t border-zinc-800 flex justify-end">
                 <button onClick={() => setConfirmClose(s)} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors" title="Cerrar todas las posiciones">
                   <AlertTriangle size={12} /> Emergency Close
                 </button>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       </div>
 

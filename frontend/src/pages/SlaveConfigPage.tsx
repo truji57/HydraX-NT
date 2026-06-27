@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Input, Select, Label, Checkbox } from '../components/ui/input';
+import { Input, Select, Label, Checkbox, Switch } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { api } from '../lib/api';
 import { useStore } from '../store';
@@ -37,6 +37,7 @@ export default function SlaveConfigPage() {
     try {
       await api.put(`/accounts/slaves/${selectedSlave.id}/config`, config);
       await api.put(`/accounts/slaves/${selectedSlave.id}/masters`, { master_ids: linkedMasters });
+      fetchAccounts();
       showToast('Guardado', 'ok');
     } catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error', 'error'); }
   };
@@ -54,7 +55,15 @@ export default function SlaveConfigPage() {
           <Card key={s.id} className={`cursor-pointer p-4 ${selectedSlave?.id === s.id ? 'border-emerald-500/50 bg-emerald-500/5' : 'hover:border-zinc-600'}`} onClick={() => selectSlave(s)}>
             <Badge variant="warning" className="mb-2">SLAVE</Badge>
             <p className="text-sm font-medium text-white">{s.name}</p>
-            <p className="text-xs text-zinc-500">NT8 Bridge :{s.bridge_port}</p>
+            <p className="text-xs text-zinc-500">Cuenta: {s.login || '—'}</p>
+            {(s.linked_masters || []).length > 0 && (
+              <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                <span className="text-[10px] text-zinc-600">copia de</span>
+                {s.linked_masters.map(m => (
+                  <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">{m}</span>
+                ))}
+              </div>
+            )}
           </Card>
         ))}
       </div>
@@ -111,11 +120,15 @@ export default function SlaveConfigPage() {
             <div><Label>Magic Number</Label><Input type="number" value={config.magic_number ?? 0} onChange={e => setConfig({...config, magic_number: Number(e.target.value)})} /></div>
           </div>
 
-          <div className="flex flex-wrap gap-6">
-            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.autocopy_enable} onChange={e => setConfig({...config, autocopy_enable: e.target.checked})} />AutoCopy</label>
-            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_sl} onChange={e => setConfig({...config, copy_sl: e.target.checked})} />Copiar SL</label>
-            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_tp} onChange={e => setConfig({...config, copy_tp: e.target.checked})} />Copiar TP</label>
-            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.inverse_copy} onChange={e => setConfig({...config, inverse_copy: e.target.checked})} />Copia Inversa</label>
+          <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-700 bg-zinc-800/30">
+            <div>
+              <p className="text-sm font-medium text-white">AutoCopy</p>
+              <p className="text-xs text-zinc-500">{config.autocopy_enable ? 'El slave esta copiando activamente' : 'El slave no copiara operaciones'}</p>
+            </div>
+            <Switch checked={config.autocopy_enable} onChange={v => setConfig({...config, autocopy_enable: v})} />
+            {false && <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_sl} onChange={e => setConfig({...config, copy_sl: e.target.checked})} />Copiar SL</label>}
+            {false && <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_tp} onChange={e => setConfig({...config, copy_tp: e.target.checked})} />Copiar TP</label>}
+            {false && <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.inverse_copy} onChange={e => setConfig({...config, inverse_copy: e.target.checked})} />Copia Inversa</label>}
           </div>
         </Card>
       )}

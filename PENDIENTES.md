@@ -27,10 +27,10 @@
 
 ## 🔴 Pendientes (próxima sesión)
 
-- [ ] Auto-reinicio de workers muertos en el orchestrator
+- [x] Auto-reinicio de workers muertos en el orchestrator
 - [ ] Reconciliación automática al iniciar (llamar /sync)
 - [ ] Tests con cuentas live (no solo Sim)
-- [ ] Soporte para múltiples instrumentos simultáneos
+- [x] Soporte para múltiples instrumentos simultáneos
 - [ ] Mejorar la UI de eventos (filtros, búsqueda)
 - [ ] Notificaciones (Telegram/Email)
 

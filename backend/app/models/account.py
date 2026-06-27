@@ -46,6 +46,7 @@ class Account(Base):
         foreign_keys="SlaveMasterLink.slave_id",
         back_populates="slave",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
     slave_links = relationship(
         "SlaveMasterLink",
@@ -53,6 +54,10 @@ class Account(Base):
         back_populates="master",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def linked_masters(self) -> list[str]:
+        return [link.master.name for link in self.master_links if link.active]
 
 
 class SlaveConfig(Base):

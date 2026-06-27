@@ -40,6 +40,7 @@ class AccountResponse(BaseModel):
     active: bool
     created_at: datetime
     updated_at: datetime
+    linked_masters: list[str] = []
     model_config = {"from_attributes": True}
 
 

@@ -14,6 +14,49 @@ const emptyForm: AccountForm = {
   poll_interval: 0.5, active: true,
 };
 
+function AccountGroup({ label, accounts, testResults, testing, onTest, onEdit, onDelete }: {
+  label: string;
+  accounts: Account[];
+  testResults: Record<string, TestResult>;
+  testing: string | null;
+  onTest: (id: string) => void;
+  onEdit: (a: Account) => void;
+  onDelete: (id: string) => void;
+}) {
+  if (accounts.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium uppercase tracking-wider text-zinc-600">{label}</p>
+      {accounts.map(a => (
+        <Card key={a.id} className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-4">
+            <Badge variant={a.role === 'MASTER' ? 'success' : 'warning'}>{a.role}</Badge>
+            <div>
+              <p className="text-sm font-medium text-white">{a.name}</p>
+              <p className="text-xs text-zinc-500">Cuenta: {a.login || '—'}</p>
+              {a.role === 'SLAVE' && (a.linked_masters || []).length > 0 && (
+                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                  <span className="text-[10px] text-zinc-600">copia de</span>
+                  {a.linked_masters.map(m => (
+                    <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">{m}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+            {!a.active && <Badge variant="danger">Inactivo</Badge>}
+          </div>
+          <div className="flex items-center gap-2">
+            {testResults[a.id] && <Badge variant={testResults[a.id].success ? 'success' : 'danger'}>{testResults[a.id].message || (testResults[a.id].success ? 'OK' : 'Fallo')}</Badge>}
+            <Button variant="outline" size="sm" onClick={() => onTest(a.id)} disabled={testing === a.id}><Wifi size={14} /> {testing === a.id ? '...' : 'Test'}</Button>
+            <Button variant="ghost" size="sm" onClick={() => onEdit(a)}><Edit3 size={14} /></Button>
+            <Button variant="ghost" size="sm" onClick={() => onDelete(a.id)}><Trash2 size={14} className="text-red-400" /></Button>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function AccountsPage() {
   const { accounts, fetchAccounts, showToast } = useStore();
   const [editing, setEditing] = useState<Account | null>(null);
@@ -96,22 +139,28 @@ export default function AccountsPage() {
         </Card>
       )}
 
-      <div className="space-y-2">
-        {accounts.map(a => (
-          <Card key={a.id} className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-4">
-              <Badge variant={a.role === 'MASTER' ? 'success' : 'warning'}>{a.role}</Badge>
-              <div><p className="text-sm font-medium text-white">{a.name}</p><p className="text-xs text-zinc-500">{a.bridge_host}:{a.bridge_port} | NT8</p></div>
-              {!a.active && <Badge variant="danger">Inactivo</Badge>}
-            </div>
-            <div className="flex items-center gap-2">
-              {testResults[a.id] && <Badge variant={testResults[a.id].success ? 'success' : 'danger'}>{testResults[a.id].message || (testResults[a.id].success ? 'OK' : 'Fallo')}</Badge>}
-              <Button variant="outline" size="sm" onClick={() => handleTest(a.id)} disabled={testing === a.id}><Wifi size={14} /> {testing === a.id ? '...' : 'Test'}</Button>
-              <Button variant="ghost" size="sm" onClick={() => editAccount(a)}><Edit3 size={14} /></Button>
-              <Button variant="ghost" size="sm" onClick={() => handleDelete(a.id)}><Trash2 size={14} className="text-red-400" /></Button>
-            </div>
-          </Card>
-        ))}
+      <div className="space-y-6">
+        <AccountGroup
+          label="Masters"
+          accounts={accounts.filter(a => a.role === 'MASTER')}
+          testResults={testResults}
+          testing={testing}
+          onTest={handleTest}
+          onEdit={editAccount}
+          onDelete={handleDelete}
+        />
+        {accounts.some(a => a.role === 'MASTER') && accounts.some(a => a.role === 'SLAVE') && (
+          <div className="border-t border-zinc-800" />
+        )}
+        <AccountGroup
+          label="Slaves"
+          accounts={accounts.filter(a => a.role === 'SLAVE')}
+          testResults={testResults}
+          testing={testing}
+          onTest={handleTest}
+          onEdit={editAccount}
+          onDelete={handleDelete}
+        />
       </div>
     </div>
   );

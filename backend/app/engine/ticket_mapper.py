@@ -49,7 +49,7 @@ def reserve_pending(
         db.close()
 
 
-def confirm_open(master_ticket: int, slave_account_id: str, slave_ticket: int):
+def confirm_open(master_ticket: int, slave_account_id: str, slave_ticket: str):
     db = SessionLocal()
     try:
         entry = (
@@ -110,8 +110,8 @@ def mark_closed(master_ticket: int, slave_account_id: str):
         db.close()
 
 
-def get_slave_ticket(master_ticket: int, slave_account_id: str) -> int | None:
-    """Returns the slave ticket, 0 if PENDING, or None if no mapping exists."""
+def get_slave_ticket(master_ticket: int, slave_account_id: str) -> str | None:
+    """Returns the slave position_id string, empty string if PENDING, or None if no mapping exists."""
     db = SessionLocal()
     try:
         entry = (
@@ -124,7 +124,7 @@ def get_slave_ticket(master_ticket: int, slave_account_id: str) -> int | None:
             .first()
         )
         if entry:
-            return entry.slave_ticket if entry.slave_ticket else 0
+            return entry.slave_ticket if entry.slave_ticket else ""
         return None
     finally:
         db.close()
