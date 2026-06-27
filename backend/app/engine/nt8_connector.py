@@ -45,7 +45,7 @@ class NT8Connector:
                     break
                 response += chunk
             if response:
-                return json.loads(response.strip().decode())
+                return json.loads(response.decode("utf-8-sig").strip())
         except Exception as e:
             logger.error(f"NT8: send error: {e}")
             self.disconnect()

@@ -59,9 +59,12 @@ def test_account(account_id: str, db: Session = Depends(get_db)):
         s.sendall(json.dumps({"action": "ACCOUNT", "account": acc.name}).encode() + b"\n")
         resp = b""
         while b"\n" not in resp:
-            resp += s.recv(4096)
+            chunk = s.recv(4096)
+            if not chunk: break
+            resp += chunk
         s.close()
-        data = json.loads(resp.strip().decode())
+        text = resp.decode("utf-8-sig").strip()
+        data = json.loads(text)
         if data.get("ok"):
             msg = f"{data.get('name', acc.name)} - Balance: {data.get('balance', '?')} | {data.get('positions', 0)} posiciones"
             return {"success": True, "message": msg, "balance": data.get("balance"), "server": f"{acc.bridge_host}:{acc.bridge_port}"}

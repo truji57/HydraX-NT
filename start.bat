@@ -7,7 +7,7 @@ echo ============================
 echo.
 echo Arrancando...
 
-start "HydraX-NT Backend" cmd /c "cd /d %~dp0backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8001"
+start "HydraX-NT Backend" cmd /c "cd /d %~dp0backend && C:\Users\danit\AppData\Local\Programs\Python\Python311\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8001"
 timeout /t 3 /nobreak >nul
 start "HydraX-NT Frontend" cmd /c "cd /d %~dp0frontend && npx vite --host 0.0.0.0 --port 5173"
 timeout /t 2 /nobreak >nul
