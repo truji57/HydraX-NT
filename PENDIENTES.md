@@ -33,6 +33,7 @@
 - [x] Soporte para múltiples instrumentos simultáneos
 - [ ] Mejorar la UI de eventos (filtros, búsqueda)
 - [ ] QUe los masters tengan un color independiente cada uno personalizable, ese color se mostrara en las pequeñas etiquetas que tienen cada slave de a que master estan copiando y ademas en la tarjeta de cada master en el dashboard que aparezca ese color por algun lado
+- [ ] Establecer el minimo contratos por si hay operacion sin SL cuando se selecciona riesgo monetario
 
 ## 🔵 Ideas futuro
 

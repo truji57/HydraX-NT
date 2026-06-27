@@ -281,6 +281,9 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 string pid = GetOrAssignPositionId(acc, p);
 
+                double tickSize = p.Instrument.MasterInstrument.TickSize;
+                double tickValue = p.Instrument.MasterInstrument.PointValue * tickSize;
+
                 list.Add(new Dictionary<string, object>
                 {
                     ["symbol"] = p.Instrument.FullName,
@@ -290,6 +293,8 @@ namespace NinjaTrader.NinjaScript.AddOns
                     ["sl"] = sl,
                     ["tp"] = tp,
                     ["id"] = pid,
+                    ["tick_size"] = tickSize,
+                    ["tick_value"] = tickValue,
                 });
             }
 

@@ -80,8 +80,18 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
         prev_positions[pid] = p
     logger.info(f"{display}: ignoring {len(prev_positions)} existing positions")
 
+    pending_open: dict[str, int] = {}
+
     prev_orders = {str(o.get("ticket", hash(str(o)))): o for o in conn.get_orders(login)}
     logger.info(f"{display}: ignoring {len(prev_orders)} existing orders")
+
+    master_balance = 0.0
+    try:
+        info = conn.get_account(login)
+        if info and info.get("ok"):
+            master_balance = float(info.get("balance", 0))
+    except Exception:
+        pass
 
     while not stop_flag.is_set():
         try:
@@ -93,10 +103,24 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
 
             for pid, p in cur_positions.items():
                 if pid not in prev_positions:
+                    sl = p.get("sl", 0) or 0
+                    tp = p.get("tp", 0) or 0
+                    if not sl and not tp:
+                        retries = pending_open.get(pid, 0) + 1
+                        if retries < 4:
+                            pending_open[pid] = retries
+                            del cur_positions[pid]
+                            continue
+                        pending_open.pop(pid, None)
+                    else:
+                        pending_open.pop(pid, None)
+
                     direction = p.get("direction", "BUY")
                     symbol = p.get("symbol", "?")
                     contracts = p.get("contracts", 1)
-                    logger.info(f"{display}: new position {pid} {symbol} {direction}")
+                    logger.info(f"{display}: new position {pid} {symbol} {direction} sl={sl} tp={tp} raw_tick_val={p.get('tick_value')} raw_tick_size={p.get('tick_size')}")
+                    tick_size = p.get("tick_size", 0.25)
+                    tick_value = p.get("tick_value", 12.5)
                     cmd = {
                         "action": "OPEN",
                         "payload": {
@@ -112,6 +136,9 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                             "bridge_port": bridge_port,
                             "contracts": contracts,
                             "nt8_position_id": pid,
+                            "tick_size": tick_size,
+                            "tick_value": tick_value,
+                            "master_balance": master_balance,
                         },
                     }
                     for q in slave_queues.values():
@@ -128,6 +155,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
 
             for pid, p in prev_positions.items():
                 if pid not in cur_positions:
+                    pending_open.pop(pid, None)
                     logger.info(f"{display}: closed position {pid}")
                     cmd = {
                         "action": "CLOSE",
@@ -217,6 +245,13 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                         pass
             prev_orders = cur_orders
 
+            try:
+                info = conn.get_account(login)
+                if info and info.get("ok"):
+                    master_balance = float(info.get("balance", 0))
+            except Exception:
+                pass
+
             for _ in range(int(poll * 10)):
                 if stop_flag.is_set():
                     break
@@ -258,6 +293,20 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         "delay_sec": delay_sec, "magic_number": magic_number,
     }
 
+    def _get_account_balance(connector: NT8Connector, account_login: str) -> float:
+        try:
+            info = connector.get_account(account_login)
+            if info and info.get("ok"):
+                return float(info.get("balance", 0))
+        except Exception:
+            pass
+        return 0.0
+
+    def _calc_sl_ticks(entry_price: float, sl_price: float, tick_size: float) -> int:
+        if not sl_price or tick_size <= 0:
+            return 0
+        return max(1, int(abs(entry_price - sl_price) / tick_size))
+
     def reload_config():
         try:
             db = SessionLocal()
@@ -292,6 +341,9 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         if stop_flag.is_set():
             break
 
+        action = cmd.get("action")
+        logger.info(f"{display}: received {action} from {cmd.get('payload', {}).get('master_name', '?')}")
+
         reload_config()
 
         if not _config["autocopy_enable"]:
@@ -302,6 +354,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         master_account_id = payload.get("master_account_id")
 
         if master_account_id and not is_slave_linked_to_master(account_id, master_account_id):
+            logger.debug(f"{display}: skipped command from unlinked master {master_account_id}")
             continue
 
         if action == "OPEN":
@@ -334,17 +387,38 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             elif _config["risk_mode"] == "RATIO":
                 contracts = calculate_contracts_ratio(payload.get("contracts", 1), _config["lot_multiplier"])
             elif _config["risk_mode"] == "RISK_PERCENT":
-                contracts = payload.get("contracts", 1)
+                if sl and payload.get("tick_size"):
+                    balance = _get_account_balance(conn, login)
+                    tick_size = payload.get("tick_size", 0.25)
+                    tick_value = payload.get("tick_value", 12.5)
+                    sl_ticks = _calc_sl_ticks(payload.get("price", 0), sl, tick_size)
+                    contracts = calculate_contracts_risk_percent(balance, _config["risk_percent"], sl_ticks, tick_value)
+                    logger.info(f"{display}: RISK_PERCENT balance={balance} risk%={_config['risk_percent']} ticks={sl_ticks} tick_val={tick_value} -> {contracts}c")
+                else:
+                    contracts = calculate_contracts_fixed(_config["fixed_contracts"])
+                    logger.info(f"{display}: RISK_PERCENT sin SL, usando fixed_contracts={contracts}")
             elif _config["risk_mode"] == "RISK_USD":
-                contracts = payload.get("contracts", 1)
+                if sl and payload.get("tick_size"):
+                    tick_size = payload.get("tick_size", 0.25)
+                    tick_value = payload.get("tick_value", 12.5)
+                    sl_ticks = _calc_sl_ticks(payload.get("price", 0), sl, tick_size)
+                    contracts = calculate_contracts_risk_usd(_config["risk_usd"], sl_ticks, tick_value)
+                    logger.info(f"{display}: RISK_USD risk={_config['risk_usd']} price={payload.get('price', 0)} sl={sl} ticks={sl_ticks} tick_val={tick_value} -> {contracts}c")
+                else:
+                    contracts = calculate_contracts_fixed(_config["fixed_contracts"])
+                    logger.info(f"{display}: RISK_USD sin SL, usando fixed_contracts={contracts}")
             elif _config["risk_mode"] == "BALANCE_PROP":
-                contracts = payload.get("contracts", 1)
+                slave_balance = _get_account_balance(conn, login)
+                master_balance = payload.get("master_balance", 0)
+                contracts = calculate_contracts_balance_prop(payload.get("contracts", 1), slave_balance, master_balance)
+                logger.info(f"{display}: BALANCE_PROP master_c={payload.get('contracts',1)} slave_bal={slave_balance} master_bal={master_balance} -> {contracts}c")
             else:
                 contracts = payload.get("contracts", 1)
 
             if _config["max_contracts"] > 0 and contracts > _config["max_contracts"]:
                 contracts = _config["max_contracts"]
 
+            logger.info(f"{display}: OPEN {symbol} {direction} x{contracts} (mode={_config['risk_mode']}) sl={sl} tp={tp}")
             result = conn.open_position(symbol, contracts, direction, sl, tp, _config["magic_number"], account=login)
             if result and result.get("ok"):
                 slave_ticket = str(result.get("position_id", ""))
@@ -363,7 +437,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 _emit_event(event_queue, "copy_error", {"slave": display, "symbol": symbol, "action": "OPEN",
                            "contracts": contracts, "master_ticket": master_ticket,
                            "error": result.get("error", "Unknown") if result else "No response"})
-                logger.error(f"{display}: OPEN FAIL {symbol}")
+                logger.error(f"{display}: OPEN FAIL {symbol} x{contracts} | {result.get('error', 'no result') if result else 'result is None'}")
 
         elif action == "CLOSE":
             master_ticket = payload["position_ticket"]

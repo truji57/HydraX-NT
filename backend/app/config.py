@@ -21,7 +21,7 @@ def get_version() -> str:
 
 class Settings(BaseSettings):
     APP_NAME: str = "HydraX-NT"
-    DEBUG: bool = True
+    DEBUG: bool = False
     DATABASE_URL: str = f"sqlite:///{BASE_DIR / 'hydrax_nt.db'}"
     SECRET_KEY: str = "hydrax-nt-change-in-production"
     ALGORITHM: str = "HS256"
