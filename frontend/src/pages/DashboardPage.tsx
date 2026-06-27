@@ -80,7 +80,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-3 gap-4">
           {masters.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas master configuradas.</p>}
           {masters.map(m => (
-            <Card key={m.id}><CardHeader><CardTitle>{m.name}</CardTitle><Badge variant="success">MASTER</Badge></CardHeader>
+            <Card key={m.id}><CardHeader><div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full shrink-0" style={{backgroundColor: m.color || '#3b82f6'}} /><CardTitle>{m.name}</CardTitle></div><Badge variant="success">MASTER</Badge></CardHeader>
               <p className="text-xs text-zinc-500">Cuenta: {m.login || '—'}</p>
             </Card>
           ))}
@@ -104,13 +104,27 @@ export default function DashboardPage() {
                 onChange={(v) => toggleAutocopy(s.id, v)}
               />
             </CardHeader>
-              <div className={`space-y-1 text-xs ${!autocopy ? 'text-zinc-600' : 'text-zinc-500'}`}><p>Cuenta: {s.login || '—'}</p></div>
+              <div className={`space-y-1 text-xs ${!autocopy ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                <p>Cuenta: {s.login || '—'}</p>
+                {slaveConfigs[s.id] && (
+                  <p className={!autocopy ? 'text-zinc-600' : 'text-zinc-400'}>
+                    Riesgo: {slaveConfigs[s.id].risk_mode === 'FIXED' ? `${slaveConfigs[s.id].fixed_contracts} contratos` :
+                             slaveConfigs[s.id].risk_mode === 'RISK_USD' ? `$${slaveConfigs[s.id].risk_usd} USD` :
+                             slaveConfigs[s.id].risk_mode === 'RISK_PERCENT' ? `${slaveConfigs[s.id].risk_percent}% balance` :
+                             slaveConfigs[s.id].risk_mode === 'RATIO' ? `x${slaveConfigs[s.id].lot_multiplier} master` :
+                             'Prop. balance'}
+                  </p>
+                )}
+              </div>
               {(s.linked_masters || []).length > 0 && (
                 <div className="mt-2 flex items-center gap-1 flex-wrap">
                   <span className="text-[10px] text-zinc-600">copia de</span>
-                  {s.linked_masters.map(m => (
-                    <span key={m} className={`text-[10px] px-1.5 py-0.5 rounded ${!autocopy ? 'bg-zinc-800/50 text-zinc-600' : 'bg-zinc-800 text-zinc-400'}`}>{m}</span>
-                  ))}
+                  {s.linked_masters.map(m => {
+                    const masterColor = accounts.find(a => a.name === m)?.color || '#3b82f6';
+                    return (
+                    <span key={m} className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{backgroundColor: masterColor + '20', color: masterColor, border: '1px solid ' + masterColor + '40'}}>{m}</span>
+                    );
+                  })}
                 </div>
               )}
               <div className="mt-3 pt-3 border-t border-zinc-800 flex justify-end">

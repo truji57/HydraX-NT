@@ -11,14 +11,16 @@ import { Plus, Trash2, Wifi, X, Edit3 } from 'lucide-react';
 const emptyForm: AccountForm = {
   name: '', role: 'MASTER', login: '', password: '',
   bridge_host: 'localhost', bridge_port: 5555,
-  poll_interval: 0.5, active: true,
+  poll_interval: 0.5, active: true, color: '#3b82f6',
 };
 
-function AccountGroup({ label, accounts, testResults, testing, onTest, onEdit, onDelete }: {
+function AccountGroup({ label, accounts, testResults, testing, copierRunning, allAccounts, onTest, onEdit, onDelete }: {
   label: string;
   accounts: Account[];
   testResults: Record<string, TestResult>;
   testing: string | null;
+  copierRunning: boolean;
+  allAccounts: Account[];
   onTest: (id: string) => void;
   onEdit: (a: Account) => void;
   onDelete: (id: string) => void;
@@ -37,9 +39,12 @@ function AccountGroup({ label, accounts, testResults, testing, onTest, onEdit, o
               {a.role === 'SLAVE' && (a.linked_masters || []).length > 0 && (
                 <div className="flex items-center gap-1 mt-1 flex-wrap">
                   <span className="text-[10px] text-zinc-600">copia de</span>
-                  {a.linked_masters.map(m => (
-                    <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">{m}</span>
-                  ))}
+                  {a.linked_masters.map(m => {
+                    const masterColor = allAccounts.find(ac => ac.name === m)?.color || '#3b82f6';
+                    return (
+                    <span key={m} className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{backgroundColor: masterColor + '20', color: masterColor, border: '1px solid ' + masterColor + '40'}}>{m}</span>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -48,8 +53,8 @@ function AccountGroup({ label, accounts, testResults, testing, onTest, onEdit, o
           <div className="flex items-center gap-2">
             {testResults[a.id] && <Badge variant={testResults[a.id].success ? 'success' : 'danger'}>{testResults[a.id].message || (testResults[a.id].success ? 'OK' : 'Fallo')}</Badge>}
             <Button variant="outline" size="sm" onClick={() => onTest(a.id)} disabled={testing === a.id}><Wifi size={14} /> {testing === a.id ? '...' : 'Test'}</Button>
-            <Button variant="ghost" size="sm" onClick={() => onEdit(a)}><Edit3 size={14} /></Button>
-            <Button variant="ghost" size="sm" onClick={() => onDelete(a.id)}><Trash2 size={14} className="text-red-400" /></Button>
+            <Button variant="ghost" size="sm" onClick={() => onEdit(a)} disabled={copierRunning} title={copierRunning ? 'Para el copiador para editar' : ''}><Edit3 size={14} /></Button>
+            <Button variant="ghost" size="sm" onClick={() => onDelete(a.id)} disabled={copierRunning} title={copierRunning ? 'Para el copiador para eliminar' : ''}><Trash2 size={14} className="text-red-400" /></Button>
           </div>
         </Card>
       ))}
@@ -58,7 +63,8 @@ function AccountGroup({ label, accounts, testResults, testing, onTest, onEdit, o
 }
 
 export default function AccountsPage() {
-  const { accounts, fetchAccounts, showToast } = useStore();
+  const { accounts, copierStatus, fetchAccounts, showToast } = useStore();
+  const copierRunning = copierStatus.running;
   const [editing, setEditing] = useState<Account | null>(null);
   const [form, setForm] = useState<AccountForm>(emptyForm);
   const [showForm, setShowForm] = useState(false);
@@ -103,7 +109,7 @@ export default function AccountsPage() {
 
   const editAccount = (a: Account) => {
     setEditing(a);
-    setForm({ name: a.name, role: a.role, login: a.login, password: '', bridge_host: a.bridge_host, bridge_port: a.bridge_port, poll_interval: a.poll_interval, active: a.active });
+    setForm({ name: a.name, role: a.role, login: a.login, password: '', bridge_host: a.bridge_host, bridge_port: a.bridge_port, poll_interval: a.poll_interval, active: a.active, color: a.color || '#3b82f6' });
     setShowForm(true);
   };
 
@@ -114,8 +120,8 @@ export default function AccountsPage() {
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-white">Cuentas NinjaTrader</h2><p className="text-sm text-zinc-500">{accounts.length} cuentas</p></div>
         <div className="flex gap-2">
-          <Button variant="primary" onClick={() => openNew('MASTER')}><Plus size={14} /> Master</Button>
-          <Button variant="outline" onClick={() => openNew('SLAVE')}><Plus size={14} /> Slave</Button>
+          <Button variant="primary" onClick={() => openNew('MASTER')} disabled={copierRunning} title={copierRunning ? 'Para el copiador para crear cuentas' : ''}><Plus size={14} /> Master</Button>
+          <Button variant="outline" onClick={() => openNew('SLAVE')} disabled={copierRunning} title={copierRunning ? 'Para el copiador para crear cuentas' : ''}><Plus size={14} /> Slave</Button>
         </div>
       </div>
 
@@ -134,6 +140,12 @@ export default function AccountsPage() {
             <div><Label>Bridge Port</Label><Input type="number" value={form.bridge_port} onChange={e => setForm({...form, bridge_port: Number(e.target.value)})} /></div>
             <div><Label>Poll Interval (s)</Label><Input type="number" step="0.1" value={form.poll_interval} onChange={e => setForm({...form, poll_interval: Number(e.target.value)})} /></div>
             <div className="flex items-end gap-2 pb-1"><Checkbox checked={form.active} onChange={e => setForm({...form, active: e.target.checked})} /><Label>Activo</Label></div>
+            {form.role === 'MASTER' && (
+              <div className="flex items-end gap-2 pb-1">
+                <input type="color" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-10 w-10 rounded border border-zinc-700 bg-zinc-800/50 cursor-pointer" />
+                <Label>Color</Label>
+              </div>
+            )}
           </div>
           <div className="flex gap-2 justify-end"><Button variant="ghost" onClick={resetForm}>Cancelar</Button><Button variant="primary" onClick={handleSubmit}>{editing ? 'Guardar' : 'Crear'}</Button></div>
         </Card>
@@ -145,6 +157,8 @@ export default function AccountsPage() {
           accounts={accounts.filter(a => a.role === 'MASTER')}
           testResults={testResults}
           testing={testing}
+          copierRunning={copierRunning}
+          allAccounts={accounts}
           onTest={handleTest}
           onEdit={editAccount}
           onDelete={handleDelete}
@@ -157,6 +171,8 @@ export default function AccountsPage() {
           accounts={accounts.filter(a => a.role === 'SLAVE')}
           testResults={testResults}
           testing={testing}
+          copierRunning={copierRunning}
+          allAccounts={accounts}
           onTest={handleTest}
           onEdit={editAccount}
           onDelete={handleDelete}

@@ -106,9 +106,12 @@ export default function SlaveConfigPage() {
             {(s.linked_masters || []).length > 0 && (
               <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                 <span className="text-[10px] text-zinc-600">copia de</span>
-                {s.linked_masters.map(m => (
-                  <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">{m}</span>
-                ))}
+                {s.linked_masters.map(m => {
+                  const masterColor = accounts.find(a => a.name === m)?.color || '#3b82f6';
+                  return (
+                  <span key={m} className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{backgroundColor: masterColor + '20', color: masterColor, border: '1px solid ' + masterColor + '40'}}>{m}</span>
+                  );
+                })}
               </div>
             )}
           </Card>

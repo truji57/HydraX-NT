@@ -10,6 +10,7 @@ export interface Account {
   bridge_port: number;
   poll_interval: number;
   active: boolean;
+  color: string;
   created_at: string;
   updated_at: string;
   linked_masters: string[];
@@ -24,6 +25,7 @@ export interface AccountForm {
   bridge_port: number;
   poll_interval: number;
   active: boolean;
+  color: string;
 }
 
 export interface SlaveConfig {

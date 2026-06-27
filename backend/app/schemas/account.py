@@ -13,6 +13,7 @@ class AccountBase(BaseModel):
     bridge_port: int = 5555
     poll_interval: float = Field(0.5, ge=0.1)
     active: bool = True
+    color: str = "#3b82f6"
 
 
 class AccountCreate(AccountBase):
@@ -27,6 +28,7 @@ class AccountUpdate(BaseModel):
     bridge_port: Optional[int] = None
     poll_interval: Optional[float] = Field(None, ge=0.1)
     active: Optional[bool] = None
+    color: Optional[str] = None
 
 
 class AccountResponse(BaseModel):
@@ -38,6 +40,7 @@ class AccountResponse(BaseModel):
     bridge_port: int
     poll_interval: float
     active: bool
+    color: str
     created_at: datetime
     updated_at: datetime
     linked_masters: list[str] = []

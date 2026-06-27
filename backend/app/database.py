@@ -28,6 +28,8 @@ def init_db():
     from app.models import account, ticket_map, trade_log  # noqa: F401
     Base.metadata.create_all(bind=engine)
     _migrate_slave_ticket()
+    _migrate_add_color()
+    _migrate_slave_templates()
 
 
 def _migrate_slave_ticket():
@@ -44,6 +46,38 @@ def _migrate_slave_ticket():
                 conn.exec_driver_sql("UPDATE ticket_map SET slave_ticket_tmp = CAST(slave_ticket AS TEXT)")
                 conn.exec_driver_sql("ALTER TABLE ticket_map DROP COLUMN slave_ticket")
                 conn.exec_driver_sql("ALTER TABLE ticket_map RENAME COLUMN slave_ticket_tmp TO slave_ticket")
+                conn.commit()
+    except Exception:
+        pass
+
+
+def _migrate_add_color():
+    try:
+        with engine.connect() as conn:
+            result = conn.exec_driver_sql(
+                "SELECT name FROM pragma_table_info('accounts') WHERE name='color'"
+            ).fetchone()
+            if not result:
+                from app.utils.logger import get_logger
+                logger = get_logger("hydrax.db")
+                logger.info("Migrating: adding accounts.color column")
+                conn.exec_driver_sql("ALTER TABLE accounts ADD COLUMN color VARCHAR(7) DEFAULT '#3b82f6'")
+                conn.commit()
+    except Exception:
+        pass
+
+
+def _migrate_slave_templates():
+    try:
+        with engine.connect() as conn:
+            result = conn.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='slave_templates'"
+            ).fetchone()
+            if not result:
+                from app.utils.logger import get_logger
+                logger = get_logger("hydrax.db")
+                logger.info("Migrating: creating slave_templates table")
+                Base.metadata.create_all(bind=engine, tables=[Base.metadata.tables["slave_templates"]])
                 conn.commit()
     except Exception:
         pass
