@@ -1,5 +1,6 @@
 """Worker NinjaTrader 8 - monitor para masters y executor para slaves."""
 import time
+import traceback
 import multiprocessing as mp
 from datetime import datetime
 
@@ -220,8 +221,8 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                 time.sleep(0.1)
 
         except Exception as e:
-            logger.error(f"{display}: error: {e}")
-            break
+            logger.error(f"{display}: error: {e}\n{traceback.format_exc()}")
+            time.sleep(1)
 
     conn.disconnect()
     logger.info(f"{display}: monitor stopped")
