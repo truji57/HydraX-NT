@@ -1,14 +1,3 @@
-/*
- * NT8HydraX.cs — NinjaTrader 8 Add-On (compatible .NET Framework 4.8)
- * 
- * Servidor TCP en localhost:5555 que recibe JSON y ejecuta en NT8.
- * 
- * INSTALAR:
- *   1. Copiar a Documents\NinjaTrader 8\bin\Custom\AddOns\
- *   2. NT8 > New > NinjaScript Editor > F5 (Compile)
- *   3. Reiniciar NT8
- */
-
 #region Using declarations
 using System;
 using System.Collections.Generic;
@@ -18,8 +7,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Web.Script.Serialization;
 using NinjaTrader.Cbi;
 using NinjaTrader.Data;
 using NinjaTrader.NinjaScript;
@@ -32,12 +20,17 @@ namespace NinjaTrader.NinjaScript.AddOns
     {
         private TcpListener _server;
         private Thread _serverThread;
+        private JavaScriptSerializer _json = new JavaScriptSerializer();
 
         protected override void OnStateChange()
         {
             if (State == State.SetDefaults)
             {
                 Name = "NT8HydraX";
+            }
+            else if (State == State.DataLoaded)
+            {
+                StartServer();
             }
             else if (State == State.Terminated)
             {
@@ -46,30 +39,32 @@ namespace NinjaTrader.NinjaScript.AddOns
             }
         }
 
-        protected override void OnWindowCreated()
+        private void StartServer()
         {
+            if (_server != null) return;
+
             if (Account.All.Count == 0)
             {
                 Log("HydraX: No accounts found", LogLevel.Warning);
                 return;
             }
 
-            Log($"HydraX: {Account.All.Count()} accounts on port 5555", LogLevel.Information);
+            Log("HydraX: " + Account.All.Count() + " accounts on port 5555", LogLevel.Information);
             foreach (var a in Account.All)
             {
                 try
                 {
                     double bal = a.Get(AccountItem.CashValue, Currency.UsDollar);
-                    Log($"  {a.Name} (Balance: {bal:F2})", LogLevel.Information);
+                    Log("  " + a.Name + " (Balance: " + bal.ToString("F2") + ")", LogLevel.Information);
                 }
                 catch { }
             }
 
-            _serverThread = new Thread(StartServer) { IsBackground = true, Name = "HydraX" };
+            _serverThread = new Thread(RunServer) { IsBackground = true, Name = "HydraX" };
             _serverThread.Start();
         }
 
-        private void StartServer()
+        private void RunServer()
         {
             try
             {
@@ -89,7 +84,7 @@ namespace NinjaTrader.NinjaScript.AddOns
             }
             catch (Exception ex)
             {
-                Log($"HydraX: Error: {ex.Message}", LogLevel.Error);
+                Log("HydraX Error: " + ex.Message, LogLevel.Error);
             }
         }
 
@@ -105,94 +100,92 @@ namespace NinjaTrader.NinjaScript.AddOns
                     string line = reader.ReadLine();
                     if (string.IsNullOrEmpty(line)) return;
 
-                    JObject cmd = JObject.Parse(line);
-                    string action = (string)cmd["action"];
+                    var cmd = _json.Deserialize<Dictionary<string, object>>(line);
+                    string action = cmd.ContainsKey("action") ? cmd["action"].ToString() : "";
                     string response = "{}";
 
-                    switch (action)
-                    {
-                        case "ACCOUNT": response = GetAccountInfo(cmd); break;
-                        case "POSITIONS": response = GetPositions(cmd); break;
-                        case "OPEN": response = OpenPosition(cmd); break;
-                        case "CLOSE": response = ClosePosition(cmd); break;
-                    }
+                    if (action == "ACCOUNT") response = GetAccountInfo(cmd);
+                    else if (action == "POSITIONS") response = GetPositions(cmd);
+                    else if (action == "OPEN") response = OpenPosition(cmd);
+                    else if (action == "CLOSE") response = ClosePosition(cmd);
 
                     writer.WriteLine(response);
                 }
                 catch (Exception ex)
                 {
-                    Log($"HydraX: {ex.Message}", LogLevel.Warning);
+                    Log("HydraX: " + ex.Message, LogLevel.Warning);
                 }
             }
         }
 
-        private Account GetAccount(JObject cmd)
+        private Account GetAccount(Dictionary<string, object> cmd)
         {
-            string accName = (string)cmd["account"];
-            if (!string.IsNullOrEmpty(accName))
-                return Account.All.FirstOrDefault(a => a.Name == accName);
+            if (cmd.ContainsKey("account"))
+            {
+                string name = cmd["account"].ToString();
+                return Account.All.FirstOrDefault(a => a.Name == name);
+            }
             return Account.All.FirstOrDefault();
         }
 
-        private string GetAccountInfo(JObject cmd)
+        private string GetAccountInfo(Dictionary<string, object> cmd)
         {
             var acc = GetAccount(cmd);
-            if (acc == null)
-                return "{\"ok\":false,\"error\":\"No account\"}";
+            if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
 
             try
             {
-                var result = new JObject
+                var data = new Dictionary<string, object>
                 {
                     ["ok"] = true,
                     ["name"] = acc.Name,
                     ["balance"] = acc.Get(AccountItem.CashValue, Currency.UsDollar),
                     ["positions"] = acc.Positions.Count(p => p.Quantity != 0),
                 };
-                return result.ToString(Formatting.None);
+                return _json.Serialize(data);
             }
-            catch (Exception ex)
+            catch
             {
-                return $"{{\"ok\":true,\"name\":\"{acc.Name}\",\"error\":\"{ex.Message}\"}}";
+                return "{\"ok\":true,\"name\":\"" + acc.Name + "\"}";
             }
         }
 
-        private string GetPositions(JObject cmd)
+        private string GetPositions(Dictionary<string, object> cmd)
         {
             var acc = GetAccount(cmd);
             if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
 
-            var list = new JArray();
+            var list = new List<Dictionary<string, object>>();
             foreach (var p in acc.Positions.Where(p => p.Quantity != 0))
             {
-                list.Add(new JObject
+                list.Add(new Dictionary<string, object>
                 {
                     ["symbol"] = p.Instrument.FullName,
                     ["direction"] = p.MarketPosition == MarketPosition.Long ? "BUY" : "SELL",
                     ["contracts"] = Math.Abs(p.Quantity),
                     ["entry_price"] = p.AveragePrice,
-                    ["id"] = $"{p.Instrument.FullName}_{p.AveragePrice}_{DateTime.Now.Ticks}",
+                    ["id"] = p.Instrument.FullName + "_" + p.AveragePrice + "_" + DateTime.Now.Ticks,
                 });
             }
 
-            var result = new JObject { ["ok"] = true, ["positions"] = list };
-            return result.ToString(Formatting.None);
+            var result = new Dictionary<string, object> { ["ok"] = true, ["positions"] = list };
+            return _json.Serialize(result);
         }
 
-        private string OpenPosition(JObject cmd)
+        private string OpenPosition(Dictionary<string, object> cmd)
         {
             var acc = GetAccount(cmd);
             if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
 
             try
             {
-                string symbol = (string)cmd["symbol"];
-                int contracts = (int)cmd["contracts"];
-                string direction = ((string)cmd["direction"]).ToUpper();
+                string symbol = cmd["symbol"].ToString();
+                int contracts = Convert.ToInt32(cmd["contracts"]);
+                string direction = cmd["direction"].ToString().ToUpper();
 
                 var instrument = Instrument.GetInstrument(symbol);
                 if (instrument == null)
-                    return $"{{\"ok\":false,\"error\":\"Symbol '{symbol}' not found\"}}";
+                    return "{\"ok\":false,\"error\":\"Symbol not found: " + symbol + "\"}";
 
                 var orderAction = direction == "BUY" ? OrderAction.Buy : OrderAction.Sell;
 
@@ -209,24 +202,23 @@ namespace NinjaTrader.NinjaScript.AddOns
                     null
                 );
 
-                Log($"HydraX: {direction} {contracts}x {symbol} on {acc.Name}", LogLevel.Information);
-                return $"{{\"ok\":true,\"position_id\":\"{symbol}_{DateTime.Now.Ticks}\"}}";
+                Log("HydraX: " + direction + " " + contracts + "x " + symbol + " on " + acc.Name, LogLevel.Information);
+                return "{\"ok\":true,\"position_id\":\"" + symbol + "_" + DateTime.Now.Ticks + "\"}";
             }
             catch (Exception ex)
             {
-                Log($"HydraX: OPEN error: {ex.Message}", LogLevel.Error);
-                return $"{{\"ok\":false,\"error\":\"{ex.Message}\"}}";
+                return "{\"ok\":false,\"error\":\"" + ex.Message.Replace("\"", "'") + "\"}";
             }
         }
 
-        private string ClosePosition(JObject cmd)
+        private string ClosePosition(Dictionary<string, object> cmd)
         {
             var acc = GetAccount(cmd);
             if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
 
             try
             {
-                string symbol = (string)cmd["symbol"];
+                string symbol = cmd.ContainsKey("symbol") ? cmd["symbol"].ToString() : "";
                 int closed = 0;
 
                 var positions = acc.Positions.Where(p => p.Quantity != 0);
@@ -253,11 +245,11 @@ namespace NinjaTrader.NinjaScript.AddOns
                     closed++;
                 }
 
-                return $"{{\"ok\":true,\"closed\":{closed}}}";
+                return "{\"ok\":true,\"closed\":" + closed + "}";
             }
             catch (Exception ex)
             {
-                return $"{{\"ok\":false,\"error\":\"{ex.Message}\"}}";
+                return "{\"ok\":false,\"error\":\"" + ex.Message.Replace("\"", "'") + "\"}";
             }
         }
     }
