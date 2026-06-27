@@ -93,11 +93,3 @@ class NT8Connector:
             "magic": magic,
             "account": account,
         })
-
-    def modify_position(self, position_id: str, sl: float = 0, tp: float = 0) -> dict | None:
-        return self._send({
-            "action": "MODIFY",
-            "position_id": position_id,
-            "sl": sl,
-            "tp": tp,
-        })
