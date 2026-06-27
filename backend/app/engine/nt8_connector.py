@@ -47,8 +47,10 @@ class NT8Connector:
             if response:
                 return json.loads(response.decode("utf-8-sig").strip())
         except Exception as e:
-            logger.error(f"NT8: send error: {e}")
+            logger.warning(f"NT8: send error: {e}")
             self.disconnect()
+            if not self.connect():
+                logger.warning(f"NT8: reconnect failed")
         return None
 
     def get_account(self, account_name: str = "") -> dict | None:

@@ -205,7 +205,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                     ["direction"] = p.MarketPosition == MarketPosition.Long ? "BUY" : "SELL",
                     ["contracts"] = Math.Abs(p.Quantity),
                     ["entry_price"] = p.AveragePrice,
-                    ["id"] = p.Instrument.FullName + "_" + p.AveragePrice + "_" + DateTime.Now.Ticks,
+                    ["id"] = acc.Name + "_" + p.Instrument.FullName + "_" + p.AveragePrice.ToString("F0"),
                 });
             }
 
