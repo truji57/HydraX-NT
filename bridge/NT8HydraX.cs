@@ -122,6 +122,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                     else if (action == "ORDERS") response = GetOrders(cmd);
                     else if (action == "OPEN") response = OpenPosition(cmd);
                     else if (action == "CLOSE") response = ClosePosition(cmd);
+                    else if (action == "MODIFY") response = ModifyPosition(cmd);
 
                     writer.WriteLine(response);
                 }
@@ -323,7 +324,59 @@ namespace NinjaTrader.NinjaScript.AddOns
             }
         }
 
-        private string ClosePosition(Dictionary<string, object> cmd)
+        private string ModifyPosition(Dictionary<string, object> cmd)
+        {
+            var acc = GetAccount(cmd);
+            if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
+
+            try
+            {
+                string symbol = cmd["symbol"].ToString();
+                double sl = cmd.ContainsKey("sl") ? Convert.ToDouble(cmd["sl"]) : 0;
+                double tp = cmd.ContainsKey("tp") ? Convert.ToDouble(cmd["tp"]) : 0;
+                string magic = cmd.ContainsKey("magic") ? cmd["magic"].ToString() : "0";
+
+                var instrument = Instrument.GetInstrument(symbol);
+                if (instrument == null) return "{\"ok\":false,\"error\":\"Symbol not found\"}";
+
+                // Cancel existing SL/TP orders for this instrument
+                foreach (var o in acc.Orders.Where(o => o.Instrument == instrument &&
+                    o.OrderState == OrderState.Working).ToList())
+                {
+                    if (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)
+                    {
+                        acc.Cancel(new[] { o });
+                        Log("HydraX: Cancelled " + o.OrderType + " for " + symbol + " on " + acc.Name, LogLevel.Information);
+                    }
+                }
+
+                // Place new SL/TP
+                var pos = acc.Positions.FirstOrDefault(p => p.Instrument == instrument && p.Quantity != 0);
+                if (pos != null)
+                {
+                    if (sl > 0)
+                    {
+                        var slAction = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.Buy;
+                        var slOrder = acc.CreateOrder(instrument, slAction, OrderType.StopMarket,
+                            TimeInForce.Gtc, Math.Abs(pos.Quantity), 0, sl, "", "HydraX-SL-" + magic, null);
+                        if (slOrder != null) acc.Submit(new[] { slOrder });
+                    }
+                    if (tp > 0)
+                    {
+                        var tpAction = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.Buy;
+                        var tpOrder = acc.CreateOrder(instrument, tpAction, OrderType.Limit,
+                            TimeInForce.Gtc, Math.Abs(pos.Quantity), tp, 0, "", "HydraX-TP-" + magic, null);
+                        if (tpOrder != null) acc.Submit(new[] { tpOrder });
+                    }
+                }
+
+                return "{\"ok\":true}";
+            }
+            catch (Exception ex)
+            {
+                return "{\"ok\":false,\"error\":\"" + ex.Message.Replace("\"", "'") + "\"}";
+            }
+        }
         {
             var acc = GetAccount(cmd);
             if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";

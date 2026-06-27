@@ -374,5 +374,34 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                            payload.get("contracts", 0), 0, None, None, TradeResult.FAILED,
                            master_ticket=master_ticket, slave_ticket=slave_ticket)
 
+        elif action == "MODIFY":
+            master_ticket = payload["position_ticket"]
+            slave_ticket_from_map = get_slave_ticket(master_ticket, account_id)
+            if not slave_ticket_from_map:
+                continue
+
+            symbol = payload.get("symbol", "")
+            new_sl = payload.get("new_sl", 0) or 0
+            new_tp = payload.get("new_tp", 0) or 0
+
+            if _config["delay_sec"] > 0:
+                for _ in range(int(_config["delay_sec"] * 10)):
+                    if stop_flag.is_set(): break
+                    time.sleep(0.1)
+                if stop_flag.is_set(): break
+
+            result = conn.modify_position(symbol, new_sl if _config["copy_sl"] else 0,
+                                          new_tp if _config["copy_tp"] else 0,
+                                          _config["magic_number"], account=login)
+            if result and result.get("ok"):
+                _log_trade(master_account_id, account_id, TradeAction.MODIFY, symbol, 0, 0,
+                           new_sl, new_tp, TradeResult.SUCCESS,
+                           master_ticket=master_ticket, slave_ticket=slave_ticket_from_map)
+                _emit_event(event_queue, "copy_ok", {"slave": display, "symbol": symbol, "action": "MODIFY"})
+                logger.info(f"{display}: MODIFY OK {symbol} SL={new_sl} TP={new_tp}")
+            else:
+                _log_trade(master_account_id, account_id, TradeAction.MODIFY, symbol, 0, 0,
+                           new_sl, new_tp, TradeResult.FAILED, master_ticket=master_ticket)
+
     conn.disconnect()
     logger.info(f"{display}: worker stopped")
