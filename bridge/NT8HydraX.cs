@@ -393,6 +393,16 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 foreach (var pos in positions.ToList())
                 {
+                    var instrument = pos.Instrument;
+
+                    // Cancel SL/TP orders first
+                    foreach (var o in acc.Orders.Where(o => o.Instrument == instrument &&
+                        o.OrderState == OrderState.Working &&
+                        (o.OrderType == OrderType.StopMarket || o.OrderType == OrderType.Limit)).ToList())
+                    {
+                        acc.Cancel(new[] { o });
+                    }
+
                     var orderAction = pos.MarketPosition == MarketPosition.Long
                         ? OrderAction.Sell : OrderAction.Buy;
 

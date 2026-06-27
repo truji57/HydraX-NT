@@ -156,6 +156,15 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                     if abs((prev.get("sl", 0) or 0) - (cur.get("sl", 0) or 0)) > 0.01 or \
                        abs((prev.get("tp", 0) or 0) - (cur.get("tp", 0) or 0)) > 0.01:
                         logger.info(f"{display}: modify position {pid}")
+                        try:
+                            event_queue.put({
+                                "type": "position_modify",
+                                "data": {"master": display, "symbol": cur.get("symbol", "?"),
+                                         "ticket": pid, "new_sl": cur.get("sl", 0) or 0,
+                                         "new_tp": cur.get("tp", 0) or 0},
+                            })
+                        except Exception:
+                            pass
                         cmd = {
                             "action": "MODIFY",
                             "payload": {
