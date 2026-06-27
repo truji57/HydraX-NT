@@ -105,7 +105,7 @@ export default function AccountsPage() {
               {!a.active && <Badge variant="danger">Inactivo</Badge>}
             </div>
             <div className="flex items-center gap-2">
-              {testResults[a.id] && <Badge variant={testResults[a.id].success ? 'success' : 'danger'}>{testResults[a.id].success ? 'OK' : 'Fallo'}</Badge>}
+              {testResults[a.id] && <Badge variant={testResults[a.id].success ? 'success' : 'danger'}>{testResults[a.id].message || (testResults[a.id].success ? 'OK' : 'Fallo')}</Badge>}
               <Button variant="outline" size="sm" onClick={() => handleTest(a.id)} disabled={testing === a.id}><Wifi size={14} /> {testing === a.id ? '...' : 'Test'}</Button>
               <Button variant="ghost" size="sm" onClick={() => editAccount(a)}><Edit3 size={14} /></Button>
               <Button variant="ghost" size="sm" onClick={() => handleDelete(a.id)}><Trash2 size={14} className="text-red-400" /></Button>
