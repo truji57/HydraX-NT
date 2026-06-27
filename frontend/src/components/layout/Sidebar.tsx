@@ -27,8 +27,8 @@ export function Sidebar() {
 
   return (
     <aside className="w-56 h-screen border-r border-zinc-800 bg-zinc-950 flex flex-col">
-      <div className="p-4 border-b border-zinc-800 text-center">
-        <img src="/logo.png" alt="HydraX" className="h-24 w-24 mx-auto mb-2" />
+      <div className={cn('p-4 border-b border-zinc-800 text-center transition-all', copierStatus.running && 'border-emerald-500/40 shadow-[inset_0_-1px_0_rgba(34,197,94,0.2)]')}>
+        <img src="/logo.png" alt="HydraX" className={cn('h-24 w-24 mx-auto mb-2', copierStatus.running ? 'drop-shadow-[0_0_24px_rgba(34,197,94,0.7)]' : 'drop-shadow-[0_0_8px_rgba(34,197,94,0.2)]')} />
         <h1 className="text-xl font-bold text-emerald-400">HydraX-NT</h1>
         <span className="text-xs text-zinc-500">NinjaTrader Copier v{version || "..."}</span>
       </div>
@@ -43,19 +43,21 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-zinc-800">
-        <div className="flex items-center gap-2 mb-2">
-          <div className={cn('h-2 w-2 rounded-full', copierStatus.running ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600')} />
-          <span className="text-xs text-zinc-500">{copierStatus.running ? 'RUNNING' : 'STOPPED'}</span>
+      <div className={cn('p-3 pb-5 border-t', copierStatus.running ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-zinc-800')}>
+        <div className="flex items-center gap-2 mb-1">
+          <div className={cn('h-3 w-3 rounded-full', copierStatus.running && 'animate-pulse')} style={{backgroundColor: copierStatus.running ? '#34d399' : '#52525b'}} />
+          <span className={cn('text-xs font-medium', copierStatus.running ? 'text-emerald-400' : 'text-zinc-500')}>{copierStatus.running ? 'RUNNING' : 'STOPPED'}</span>
+        </div>
+        <div className="h-5 flex items-center justify-center mb-1">
+          {copierStatus.running && copierStatus.uptime_seconds ? (
+            <p className="text-xs text-zinc-500">{Math.floor(copierStatus.uptime_seconds / 60)}m {Math.floor(copierStatus.uptime_seconds % 60)}s</p>
+          ) : null}
         </div>
         <button onClick={handleStartStop}
           className={cn('w-full flex items-center justify-center gap-2 py-3 rounded-md text-base font-semibold transition-colors',
             copierStatus.running ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20')}>
           {copierStatus.running ? <><Square size={16} /> STOP</> : <><Play size={16} /> RUN</>}
         </button>
-        {copierStatus.running && copierStatus.active_masters > 0 && (
-          <div className="mt-2 text-xs text-zinc-500 text-center">{copierStatus.active_masters}M / {copierStatus.active_slaves}S</div>
-        )}
       </div>
     </aside>
   );

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Card, CardHeader, CardTitle, CardValue } from '../components/ui/card';
+import { Card, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Switch } from '../components/ui/input';
 import { useStore } from '../store';
 import { api } from '../lib/api';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 import type { Account, SlaveConfig, SlaveTemplate } from '../types';
 
 export default function DashboardPage() {
@@ -80,38 +80,36 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-white">Dashboard</h2><p className="text-sm text-zinc-500">{copierStatus.running ? 'Copiador activo' : 'Copiador detenido'}</p></div>
+      <div className="flex items-center justify-between mb-8">
+        <div className="relative inline-block">
+          <div className="absolute inset-0 rounded-sm bg-gradient-to-r from-emerald-500/20 via-emerald-500/20 via-60% to-transparent" />
+          <h2 className="relative text-2xl font-bold text-white py-2 px-3">Dashboard</h2>
+        </div>
         <Badge variant={copierStatus.running ? 'success' : 'default'}>{copierStatus.running ? 'RUNNING' : 'STOPPED'}</Badge>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        <Card><CardHeader><CardTitle>Masters</CardTitle><Wallet size={18} className="text-emerald-400" /></CardHeader><CardValue>{copierStatus.active_masters}</CardValue></Card>
-        <Card><CardHeader><CardTitle>Slaves</CardTitle><BarChart3 size={18} className="text-blue-400" /></CardHeader><CardValue>{copierStatus.active_slaves}</CardValue></Card>
-        <Card><CardHeader><CardTitle>Posiciones</CardTitle><TrendingUp size={18} className="text-amber-400" /></CardHeader><CardValue>{copierStatus.total_positions}</CardValue><p className="text-xs text-zinc-600 mt-1">contratos abiertos</p></Card>
-        <Card><CardHeader><CardTitle>Uptime</CardTitle><TrendingDown size={18} className="text-purple-400" /></CardHeader>
-          <CardValue>{copierStatus.uptime_seconds ? `${Math.floor(copierStatus.uptime_seconds/60)}m ${Math.floor(copierStatus.uptime_seconds%60)}s` : '--'}</CardValue>
-        </Card>
-      </div>
-
-      <div><h3 className="text-sm font-medium text-zinc-400 mb-3">Cuentas Master</h3>
+      <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Master <span className="text-emerald-400">({copierStatus.active_masters})</span></h3>
         <div className="grid grid-cols-3 gap-4">
           {masters.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas master configuradas.</p>}
           {masters.map(m => (
-            <Card key={m.id}><CardHeader><div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full shrink-0" style={{backgroundColor: m.color || '#3b82f6'}} /><CardTitle>{m.name}</CardTitle></div><Badge variant="success">MASTER</Badge></CardHeader>
-              <p className="text-xs text-zinc-500">Cuenta: {m.login || '—'}</p>
+            <Card key={m.id} className={`relative overflow-hidden ${copierStatus.running ? 'border-emerald-500/20' : ''}`}>
+              {copierStatus.running && <div className="absolute inset-0 bg-emerald-500/5 animate-[pulse_3s_ease-in-out_infinite]" />}
+              <div className="relative"><CardHeader><div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full shrink-0" style={{backgroundColor: m.color || '#3b82f6'}} /><CardTitle>{m.name}</CardTitle></div><Badge variant="success">MASTER</Badge></CardHeader>
+              <p className="text-xs text-zinc-500">Cuenta: {m.login || '—'}</p></div>
             </Card>
           ))}
         </div>
       </div>
 
-      <div><h3 className="text-sm font-medium text-zinc-400 mb-3">Cuentas Slave</h3>
+      <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Slave <span className="text-amber-400">({copierStatus.active_slaves})</span></h3>
         <div className="grid grid-cols-3 gap-4">
           {slaves.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas slave configuradas.</p>}
           {slaves.map(s => {
             const autocopy = slaveConfigs[s.id]?.autocopy_enable ?? true;
             return (
-            <Card key={s.id} className={!autocopy ? 'opacity-60 border-amber-800/40' : ''}><CardHeader className="mb-2">
+            <Card key={s.id} className={`relative overflow-hidden ${!autocopy ? 'opacity-60 border-amber-800/40' : copierStatus.running ? 'border-amber-500/20' : ''}`}>
+              {copierStatus.running && autocopy && <div className="absolute inset-0 bg-amber-500/4 animate-[pulse_3s_ease-in-out_infinite]" />}
+              <div className="relative"><CardHeader className="mb-2">
               <div className="flex items-center gap-2">
                 <CardTitle className={!autocopy ? 'text-zinc-500' : ''}>{s.name}</CardTitle>
                 <Badge variant="warning">SLAVE</Badge>
@@ -151,6 +149,7 @@ export default function DashboardPage() {
                   <AlertTriangle size={12} /> Emergency Close
                 </button>
               </div>
+            </div>
             </Card>
             );
           })}
