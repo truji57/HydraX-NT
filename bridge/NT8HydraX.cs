@@ -229,6 +229,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                     return "{\"ok\":false,\"error\":\"Symbol not found: " + symbol + "\"}";
 
                 var orderAction = direction == "BUY" ? OrderAction.Buy : OrderAction.Sell;
+                string magic = cmd.ContainsKey("magic") ? cmd["magic"].ToString() : "0";
 
                 var order = acc.CreateOrder(
                     instrument,
@@ -236,7 +237,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                     OrderType.Market,
                     TimeInForce.Gtc,
                     contracts,
-                    0, 0, "", "HydraX", null
+                    0, 0, "", "HydraX-" + magic, null
                 );
 
                 if (order == null)
