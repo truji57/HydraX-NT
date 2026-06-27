@@ -377,6 +377,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                 return "{\"ok\":false,\"error\":\"" + ex.Message.Replace("\"", "'") + "\"}";
             }
         }
+        private string ClosePosition(Dictionary<string, object> cmd)
         {
             var acc = GetAccount(cmd);
             if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
