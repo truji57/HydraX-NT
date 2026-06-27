@@ -42,7 +42,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
     while not stop_flag.is_set():
         try:
             cur_positions = {}
-            positions = conn.get_positions()
+            positions = conn.get_positions(login)
             for p in positions:
                 pid = p.get("id", str(hash(str(p))))
                 cur_positions[pid] = p
