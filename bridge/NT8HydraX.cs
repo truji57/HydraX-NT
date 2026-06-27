@@ -119,6 +119,7 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                     if (action == "ACCOUNT") response = GetAccountInfo(cmd);
                     else if (action == "POSITIONS") response = GetPositions(cmd);
+                    else if (action == "ORDERS") response = GetOrders(cmd);
                     else if (action == "OPEN") response = OpenPosition(cmd);
                     else if (action == "CLOSE") response = ClosePosition(cmd);
 
@@ -163,7 +164,33 @@ namespace NinjaTrader.NinjaScript.AddOns
             }
         }
 
-        private string GetPositions(Dictionary<string, object> cmd)
+        private string GetOrders(Dictionary<string, object> cmd)
+        {
+            var acc = GetAccount(cmd);
+            if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
+
+            var list = new List<Dictionary<string, object>>();
+            foreach (var o in acc.Orders.Where(o => o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted))
+            {
+                string otype = o.OrderType == OrderType.StopMarket ? "STOP" :
+                               o.OrderType == OrderType.Limit ? "LIMIT" :
+                               o.OrderType == OrderType.StopLimit ? "STOP_LIMIT" : "OTHER";
+                list.Add(new Dictionary<string, object>
+                {
+                    ["ticket"] = o.Id,
+                    ["symbol"] = o.Instrument.FullName,
+                    ["type"] = otype,
+                    ["direction"] = o.OrderAction == OrderAction.Buy ? "BUY" : "SELL",
+                    ["quantity"] = o.Quantity,
+                    ["limit_price"] = o.LimitPrice,
+                    ["stop_price"] = o.StopPrice,
+                    ["state"] = o.OrderState.ToString(),
+                });
+            }
+
+            var result = new Dictionary<string, object> { ["ok"] = true, ["orders"] = list };
+            return _json.Serialize(result);
+        }
         {
             var acc = GetAccount(cmd);
             if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";

@@ -61,6 +61,12 @@ class NT8Connector:
             return resp.get("positions", [])
         return []
 
+    def get_orders(self, account_name: str = "") -> list[dict]:
+        resp = self._send({"action": "ORDERS", "account": account_name})
+        if resp and resp.get("ok"):
+            return resp.get("orders", [])
+        return []
+
     def open_position(self, symbol: str, contracts: int, direction: str,
                       sl: float = 0, tp: float = 0, magic: int = 0,
                       comment: str = "", account: str = "") -> dict | None:

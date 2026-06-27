@@ -36,6 +36,9 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
         prev_positions[pid] = p
     logger.info(f"{display}: ignoring {len(prev_positions)} existing positions")
 
+    prev_orders = {str(o.get("ticket", hash(str(o)))): o for o in conn.get_orders(login)}
+    logger.info(f"{display}: ignoring {len(prev_orders)} existing orders")
+
     while not stop_flag.is_set():
         try:
             cur_positions = {}
@@ -130,6 +133,36 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                                 q.put(cmd)
 
             prev_positions = cur_positions
+
+            cur_orders = {str(o.get("ticket", hash(str(o)))): o for o in conn.get_orders(login)}
+            for ot, o in cur_orders.items():
+                if ot not in prev_orders:
+                    logger.info(f"{display}: new pending order {ot} {o.get('symbol')} {o.get('type')} {o.get('direction')}")
+                    try:
+                        event_queue.put({
+                            "type": "order_pending",
+                            "data": {
+                                "master": display,
+                                "symbol": o.get("symbol"),
+                                "type": o.get("type"),
+                                "direction": o.get("direction"),
+                                "quantity": o.get("quantity"),
+                                "ticket": ot,
+                            },
+                        })
+                    except Exception:
+                        pass
+            for ot, o in prev_orders.items():
+                if ot not in cur_orders:
+                    logger.info(f"{display}: order removed {ot}")
+                    try:
+                        event_queue.put({
+                            "type": "order_removed",
+                            "data": {"master": display, "ticket": ot},
+                        })
+                    except Exception:
+                        pass
+            prev_orders = cur_orders
 
             for _ in range(int(poll_interval * 10)):
                 if stop_flag.is_set():
