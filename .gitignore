@@ -17,3 +17,7 @@ Thumbs.db
 # Bridge build
 bridge/bin/
 bridge/obj/
+bridge/bin/
+bridge/obj/
+bridge/publish/
+bridge/bridge/

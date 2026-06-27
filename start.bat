@@ -7,7 +7,7 @@ echo ============================
 echo.
 echo Arrancando...
 
-start "HydraX-NT Bridge" cmd /c "cd bridge && dotnet run"
+start "HydraX-NT Bridge" cmd /c "set PATH=C:\Users\danit\AppData\Local\Microsoft\dotnet;%PATH% && bridge\bin\Release\net8.0\win-x64\NT8Bridge.exe"
 timeout /t 2 /nobreak >nul
 start "HydraX-NT Backend" cmd /c "cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8001"
 timeout /t 3 /nobreak >nul
