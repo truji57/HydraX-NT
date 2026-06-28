@@ -130,7 +130,7 @@ export default function DashboardPage() {
               {copierStatus.running && autocopy && <div className="absolute inset-0 bg-amber-500/4 animate-[pulse_3s_ease-in-out_infinite]" />}
               <div className="relative"><CardHeader className="mb-2">
               <div className="flex items-center gap-2">
-                <CardTitle className={!autocopy ? 'text-zinc-500' : ''}>{s.name}</CardTitle>
+                <CardTitle className={`text-base font-semibold text-white ${!autocopy ? 'text-zinc-500' : ''}`}>{s.name}</CardTitle>
                 <Badge variant="warning">SLAVE</Badge>
                 {!autocopy && <Badge variant="warning" className="!bg-amber-500/15 !text-amber-400 !border-amber-500/30">PAUSADO</Badge>}
               </div>
