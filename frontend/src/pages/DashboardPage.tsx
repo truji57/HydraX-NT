@@ -214,7 +214,7 @@ export default function DashboardPage() {
               {logs.map((log, i) => (
                 <div key={i} className="flex items-start gap-2 py-1.5 px-1 hover:bg-zinc-800/30 rounded">
                   <span className="text-zinc-600 shrink-0 w-20">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                  <Badge variant={log.type === 'position_open' ? 'success' : log.type === 'position_close' ? 'danger' : log.type === 'position_modify' ? 'warning' : log.type === 'copy_ok' ? 'success' : log.type === 'copy_error' ? 'danger' : 'default'}>
+                  <Badge variant={log.type === 'position_open' ? 'info' : log.type === 'position_close' ? 'danger' : log.type === 'position_modify' ? 'warning' : log.type === 'copy_ok' ? 'success' : log.type === 'copy_error' ? 'danger' : 'default'}>
                     {log.type === 'position_open' ? 'OPEN' : log.type === 'position_close' ? 'CLOSE' : log.type === 'position_modify' ? 'MODIFY' : log.type === 'copy_ok' ? 'OK' : log.type === 'copy_error' ? 'FAIL' : log.type}
                   </Badge>
                   <span className="text-zinc-300 truncate">{log.message}</span>

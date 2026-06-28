@@ -45,6 +45,7 @@ export interface SlaveConfig {
   inverse_copy: boolean;
   copy_modify: boolean;
   sync_close: boolean;
+  template_id: string | null;
   delay_sec: number;
   magic_number: number;
 }

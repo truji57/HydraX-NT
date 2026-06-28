@@ -25,11 +25,33 @@ def create_template(data: SlaveTemplateCreate, db: Session = Depends(get_db)):
 
 @router.put("/{template_id}", response_model=SlaveTemplateResponse)
 def update_template(template_id: str, data: SlaveTemplateUpdate, db: Session = Depends(get_db)):
+    from app.models.account import SlaveConfig
+
     t = db.query(SlaveTemplate).filter(SlaveTemplate.id == template_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="Plantilla no encontrada")
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(t, key, value)
+    db.flush()
+
+    slaves = db.query(SlaveConfig).filter(SlaveConfig.template_id == template_id).all()
+    for sc in slaves:
+        sc.risk_mode = t.risk_mode
+        sc.fixed_contracts = t.fixed_contracts
+        sc.risk_percent = t.risk_percent
+        sc.risk_usd = t.risk_usd
+        sc.lot_multiplier = t.lot_multiplier
+        sc.max_contracts = t.max_contracts
+        sc.max_positions = t.max_positions
+        sc.autocopy_enable = t.autocopy_enable
+        sc.copy_sl = t.copy_sl
+        sc.copy_tp = t.copy_tp
+        sc.inverse_copy = t.inverse_copy
+        sc.copy_modify = t.copy_modify
+        sc.sync_close = t.sync_close
+        sc.delay_sec = t.delay_sec
+        sc.magic_number = t.magic_number
+
     db.commit()
     db.refresh(t)
     return t

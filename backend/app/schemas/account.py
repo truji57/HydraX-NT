@@ -65,6 +65,7 @@ class SlaveConfigBase(BaseModel):
     inverse_copy: bool = False
     copy_modify: bool = True
     sync_close: bool = False
+    template_id: Optional[str] = None
     delay_sec: float = 0.0
     magic_number: int = 0
 

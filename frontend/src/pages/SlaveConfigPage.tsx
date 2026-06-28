@@ -35,21 +35,26 @@ export default function SlaveConfigPage() {
       ]);
       setConfig(cfg);
       setLinkedMasters(links.map(l => l.master_id));
-      const match = templates.find(t =>
-        t.risk_mode === cfg.risk_mode &&
-        t.fixed_contracts === cfg.fixed_contracts &&
-        t.risk_percent === cfg.risk_percent &&
-        t.risk_usd === (cfg.risk_usd ?? 50) &&
-        t.lot_multiplier === cfg.lot_multiplier &&
-        t.max_contracts === cfg.max_contracts &&
-        t.max_positions === cfg.max_positions &&
-        t.autocopy_enable === cfg.autocopy_enable &&
-        t.delay_sec === cfg.delay_sec &&
-        t.magic_number === (cfg.magic_number ?? 0) &&
-        t.copy_modify === cfg.copy_modify &&
-        t.sync_close === cfg.sync_close
-      );
-      setActiveTemplateId(match?.id || '');
+      if (cfg.template_id) {
+        const t = templates.find(tp => tp.id === cfg.template_id);
+        setActiveTemplateId(t?.id || '');
+      } else {
+        const match = templates.find(t =>
+          t.risk_mode === cfg.risk_mode &&
+          t.fixed_contracts === cfg.fixed_contracts &&
+          t.risk_percent === cfg.risk_percent &&
+          t.risk_usd === (cfg.risk_usd ?? 50) &&
+          t.lot_multiplier === cfg.lot_multiplier &&
+          t.max_contracts === cfg.max_contracts &&
+          t.max_positions === cfg.max_positions &&
+          t.autocopy_enable === cfg.autocopy_enable &&
+          t.delay_sec === cfg.delay_sec &&
+          t.magic_number === (cfg.magic_number ?? 0) &&
+          t.copy_modify === cfg.copy_modify &&
+          t.sync_close === cfg.sync_close
+        );
+        setActiveTemplateId(match?.id || '');
+      }
     } catch { showToast('Error cargando config', 'error'); }
   };
 
@@ -73,6 +78,7 @@ export default function SlaveConfigPage() {
     setActiveTemplateId(templateId);
     setConfig({
       ...config,
+      template_id: templateId,
       risk_mode: t.risk_mode,
       fixed_contracts: t.fixed_contracts,
       risk_percent: t.risk_percent,
@@ -94,7 +100,7 @@ export default function SlaveConfigPage() {
   const updateConfig = (patch: Partial<SlaveConfig>) => {
     if (!config) return;
     setActiveTemplateId('');
-    setConfig({ ...config, ...patch });
+    setConfig({ ...config, ...patch, template_id: null });
   };
 
   return (

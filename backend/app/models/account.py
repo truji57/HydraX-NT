@@ -80,6 +80,7 @@ class SlaveConfig(Base):
     inverse_copy = Column(Boolean, default=False)
     copy_modify = Column(Boolean, default=True)
     sync_close = Column(Boolean, default=False)
+    template_id = Column(String, ForeignKey("slave_templates.id", ondelete="SET NULL"), nullable=True)
     delay_sec = Column(Float, default=0.0)
     magic_number = Column(Integer, default=0)
 
