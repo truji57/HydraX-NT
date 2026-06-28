@@ -30,6 +30,7 @@ def init_db():
     _migrate_slave_ticket()
     _migrate_add_color()
     _migrate_copy_enable()
+    _migrate_template_id()
     _migrate_slave_templates()
 
 
@@ -81,7 +82,23 @@ def _migrate_copy_enable():
                     logger = get_logger("hydrax.db")
                     logger.info(f"Migrating: adding {table}.{col} column")
                     conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} BOOLEAN DEFAULT 1")
-                    conn.commit()
+                conn.commit()
+    except Exception:
+        pass
+
+
+def _migrate_template_id():
+    try:
+        with engine.connect() as conn:
+            result = conn.exec_driver_sql(
+                "SELECT name FROM pragma_table_info('slave_config') WHERE name='template_id'"
+            ).fetchone()
+            if not result:
+                from app.utils.logger import get_logger
+                logger = get_logger("hydrax.db")
+                logger.info("Migrating: adding slave_config.template_id column")
+                conn.exec_driver_sql("ALTER TABLE slave_config ADD COLUMN template_id VARCHAR(36) DEFAULT NULL")
+                conn.commit()
     except Exception:
         pass
 
