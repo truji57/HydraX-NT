@@ -63,6 +63,8 @@ class SlaveConfigBase(BaseModel):
     copy_sl: bool = True
     copy_tp: bool = True
     inverse_copy: bool = False
+    copy_modify: bool = True
+    sync_close: bool = False
     delay_sec: float = 0.0
     magic_number: int = 0
 
@@ -101,6 +103,8 @@ class SlaveTemplateBase(BaseModel):
     copy_sl: bool = True
     copy_tp: bool = True
     inverse_copy: bool = False
+    copy_modify: bool = True
+    sync_close: bool = False
     delay_sec: float = 0.0
     magic_number: int = 0
 
@@ -122,6 +126,8 @@ class SlaveTemplateUpdate(BaseModel):
     copy_sl: Optional[bool] = None
     copy_tp: Optional[bool] = None
     inverse_copy: Optional[bool] = None
+    copy_modify: Optional[bool] = None
+    sync_close: Optional[bool] = None
     delay_sec: Optional[float] = None
     magic_number: Optional[int] = None
 

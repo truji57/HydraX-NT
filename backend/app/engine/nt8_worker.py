@@ -168,41 +168,33 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                         o.get("symbol") == symbol and o.get("type") in ("STOP", "LIMIT") and o.get("state") == "Filled"
                         for o in cur_orders.values()
                     )
-                    if filled_target:
-                        logger.info(f"{display}: closed by TP/SL {pid}, slaves keep their own targets")
-                        try:
-                            event_queue.put({
-                                "type": "position_close",
-                                "data": {"master": display, "symbol": symbol, "ticket": pid, "reason": "target"},
-                            })
-                        except Exception:
-                            pass
-                    else:
-                        logger.info(f"{display}: manual close {pid}, sending CLOSE to slaves")
-                        if master_enabled:
-                            cmd = {
-                                "action": "CLOSE",
-                                "payload": {
-                                    "position_ticket": hash(pid) % 1000000,
-                                    "symbol": symbol,
-                                    "direction": p.get("direction", "BUY"),
-                                    "contracts": p.get("contracts", 1),
-                                    "master_account_id": account_id,
-                                    "bridge_host": bridge_host,
-                                    "bridge_port": bridge_port,
-                                    "nt8_position_id": pid,
-                                },
-                            }
-                            for q in slave_queues.values():
-                                if not stop_flag.is_set():
-                                    q.put(cmd)
-                        try:
-                            event_queue.put({
-                                "type": "position_close",
-                                "data": {"master": display, "symbol": symbol, "ticket": pid, "reason": "manual"},
-                            })
-                        except Exception:
-                            pass
+                    close_reason = "target" if filled_target else "manual"
+                    logger.info(f"{display}: closed position {pid} reason={close_reason}")
+                    if master_enabled:
+                        cmd = {
+                            "action": "CLOSE",
+                            "payload": {
+                                "position_ticket": hash(pid) % 1000000,
+                                "symbol": symbol,
+                                "direction": p.get("direction", "BUY"),
+                                "contracts": p.get("contracts", 1),
+                                "master_account_id": account_id,
+                                "bridge_host": bridge_host,
+                                "bridge_port": bridge_port,
+                                "nt8_position_id": pid,
+                                "close_reason": close_reason,
+                            },
+                        }
+                        for q in slave_queues.values():
+                            if not stop_flag.is_set():
+                                q.put(cmd)
+                    try:
+                        event_queue.put({
+                            "type": "position_close",
+                            "data": {"master": display, "symbol": symbol, "ticket": pid, "reason": close_reason},
+                        })
+                    except Exception:
+                        pass
 
             for pid, cur in cur_positions.items():
                 if pid in prev_positions:
@@ -301,7 +293,8 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                        risk_mode: str, risk_percent: float, risk_usd: float,
                        fixed_contracts: int, lot_multiplier: float, max_contracts: int,
                        max_positions: int, autocopy_enable: bool, copy_sl: bool,
-                       copy_tp: bool, inverse_copy: bool, delay_sec: float,
+                       copy_tp: bool, inverse_copy: bool, copy_modify: bool,
+                       sync_close: bool, delay_sec: float,
                        magic_number: int, queue: mp.Queue, stop_flag: mp.Event,
                        event_queue: mp.Queue):
     display = name or f"nt8-slave"
@@ -322,6 +315,8 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         "max_contracts": max_contracts, "max_positions": max_positions,
         "autocopy_enable": autocopy_enable, "copy_sl": copy_sl,
         "copy_tp": copy_tp, "inverse_copy": inverse_copy,
+        "copy_modify": copy_modify,
+        "sync_close": sync_close,
         "delay_sec": delay_sec, "magic_number": magic_number,
     }
 
@@ -356,6 +351,8 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 _config["copy_sl"] = cfg.copy_sl if cfg.copy_sl is not None else True
                 _config["copy_tp"] = cfg.copy_tp if cfg.copy_tp is not None else True
                 _config["inverse_copy"] = cfg.inverse_copy or False
+                _config["copy_modify"] = cfg.copy_modify if cfg.copy_modify is not None else True
+                _config["sync_close"] = cfg.sync_close if cfg.sync_close is not None else False
                 _config["delay_sec"] = cfg.delay_sec or 0.0
                 _config["magic_number"] = cfg.magic_number or 0
         except Exception:
@@ -473,6 +470,8 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 logger.error(f"{display}: OPEN FAIL {symbol} x{contracts} | {result.get('error', 'no result') if result else 'result is None'}")
 
         elif action == "CLOSE":
+            if not _config["sync_close"]:
+                continue
             master_ticket = payload["position_ticket"]
             slave_position_id = get_slave_ticket(master_ticket, account_id)
             if not slave_position_id:
@@ -496,6 +495,8 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 logger.error(f"{display}: CLOSE FAIL {payload.get('symbol','?')} | {result.get('error', 'no result') if result else 'result is None'}")
 
         elif action == "MODIFY":
+            if not _config["copy_modify"]:
+                continue
             master_ticket = payload["position_ticket"]
             slave_position_id = get_slave_ticket(master_ticket, account_id)
             if not slave_position_id:

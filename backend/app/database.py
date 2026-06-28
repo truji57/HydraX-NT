@@ -69,17 +69,19 @@ def _migrate_add_color():
 
 
 def _migrate_copy_enable():
+    """Add copy_enable to accounts, copy_modify to slave_config and slave_templates."""
     try:
         with engine.connect() as conn:
-            result = conn.exec_driver_sql(
-                "SELECT name FROM pragma_table_info('accounts') WHERE name='copy_enable'"
-            ).fetchone()
-            if not result:
-                from app.utils.logger import get_logger
-                logger = get_logger("hydrax.db")
-                logger.info("Migrating: adding accounts.copy_enable column")
-                conn.exec_driver_sql("ALTER TABLE accounts ADD COLUMN copy_enable BOOLEAN DEFAULT 1")
-                conn.commit()
+            for col, table in [("copy_enable", "accounts"), ("copy_modify", "slave_config"), ("copy_modify", "slave_templates"), ("sync_close", "slave_config"), ("sync_close", "slave_templates")]:
+                result = conn.exec_driver_sql(
+                    f"SELECT name FROM pragma_table_info('{table}') WHERE name='{col}'"
+                ).fetchone()
+                if not result:
+                    from app.utils.logger import get_logger
+                    logger = get_logger("hydrax.db")
+                    logger.info(f"Migrating: adding {table}.{col} column")
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} BOOLEAN DEFAULT 1")
+                    conn.commit()
     except Exception:
         pass
 

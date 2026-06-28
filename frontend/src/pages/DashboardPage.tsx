@@ -79,7 +79,9 @@ export default function DashboardPage() {
       tp.max_positions === cfg.max_positions &&
       tp.autocopy_enable === cfg.autocopy_enable &&
       tp.delay_sec === cfg.delay_sec &&
-      tp.magic_number === (cfg.magic_number ?? 0)
+      tp.magic_number === (cfg.magic_number ?? 0) &&
+      tp.copy_modify === cfg.copy_modify &&
+      tp.sync_close === cfg.sync_close
     );
     return t?.name || null;
   };
@@ -110,8 +112,9 @@ export default function DashboardPage() {
         <div className="grid grid-cols-3 gap-4">
           {masters.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas master configuradas.</p>}
           {masters.map(m => (
-            <Card key={m.id} className={`relative overflow-hidden ${copierStatus.running ? 'border-emerald-500/20' : ''} ${m.copy_enable === false ? 'opacity-60' : ''}`}>
+            <Card key={m.id} className={`relative overflow-hidden ${copierStatus.running ? 'border-emerald-500/20' : ''} ${m.copy_enable === false ? 'opacity-60' : ''} ${(slaveStats[m.id]?.positions ?? 0) > 0 ? 'border-emerald-500/40' : ''}`}>
               {copierStatus.running && m.copy_enable !== false && <div className="absolute inset-0 bg-emerald-500/5 animate-[pulse_3s_ease-in-out_infinite]" />}
+              {(slaveStats[m.id]?.positions ?? 0) > 0 && <div className="absolute inset-0 bg-emerald-500/10 animate-[pulse_1.5s_ease-in-out_infinite] shadow-[inset_0_0_20px_rgba(34,197,94,0.15)]" />}
               <div className="relative"><CardHeader><div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full shrink-0" style={{backgroundColor: m.color || '#3b82f6', opacity: m.copy_enable === false ? 0.4 : 1}} /><CardTitle className={m.copy_enable === false ? 'text-zinc-500' : ''}>{m.name}</CardTitle></div><Badge variant="success">MASTER</Badge></CardHeader>
               <div className="flex items-center justify-between">
                 <p className="text-xs text-zinc-500">Cuenta: {m.login || '—'}</p>
@@ -138,57 +141,65 @@ export default function DashboardPage() {
           {slaves.map(s => {
             const autocopy = slaveConfigs[s.id]?.autocopy_enable ?? true;
             return (
-            <Card key={s.id} className={`relative overflow-hidden ${!autocopy ? 'opacity-60 border-amber-800/40' : copierStatus.running ? 'border-amber-500/20' : ''}`}>
+            <Card key={s.id} className={`relative overflow-hidden ${!autocopy ? 'opacity-60 border-amber-800/40' : copierStatus.running ? 'border-amber-500/20' : ''} ${(slaveStats[s.id]?.positions ?? 0) > 0 ? 'border-amber-500/40' : ''}`}>
               {copierStatus.running && autocopy && <div className="absolute inset-0 bg-amber-500/4 animate-[pulse_3s_ease-in-out_infinite]" />}
-              <div className="relative"><CardHeader className="mb-2">
-              <div className="flex items-center gap-2">
-                <CardTitle className={`text-base font-semibold text-white ${!autocopy ? 'text-zinc-500' : ''}`}>{s.name}</CardTitle>
-                <Badge variant="warning">SLAVE</Badge>
-                {!autocopy && <Badge variant="warning" className="!bg-amber-500/15 !text-amber-400 !border-amber-500/30">PAUSADO</Badge>}
-              </div>
-              <Switch
-                checked={autocopy}
-                onChange={(v) => toggleAutocopy(s.id, v)}
-              />
-            </CardHeader>
-              <div className={`space-y-1 text-xs ${!autocopy ? 'text-zinc-600' : 'text-zinc-500'}`}>
-                <p>Cuenta: {s.login || '—'}</p>
-                {slaveStats[s.id] && (
-                  <p className={!autocopy ? 'text-zinc-600' : 'text-zinc-300'}>
-                    <span className={slaveStats[s.id].unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                      {slaveStats[s.id].unrealized >= 0 ? '+' : ''}{slaveStats[s.id].unrealized.toFixed(2)} USD
-                    </span>
-                    <span className="text-zinc-600 mx-2">|</span>
-                    <span>{slaveStats[s.id].positions} pos.</span>
-                  </p>
-                )}
-                {slaveConfigs[s.id] && (
-                  <p className={!autocopy ? 'text-zinc-600' : 'text-zinc-400'}>
-                    Riesgo: {slaveConfigs[s.id].risk_mode === 'FIXED' ? `${slaveConfigs[s.id].fixed_contracts} contratos` :
-                             slaveConfigs[s.id].risk_mode === 'RISK_USD' ? `$${slaveConfigs[s.id].risk_usd} USD` :
-                             slaveConfigs[s.id].risk_mode === 'RISK_PERCENT' ? `${slaveConfigs[s.id].risk_percent}% balance` :
-                             slaveConfigs[s.id].risk_mode === 'RATIO' ? `x${slaveConfigs[s.id].lot_multiplier} master` :
-                             'Prop. balance'}
-                    {matchTemplate(slaveConfigs[s.id]) && <span className="text-zinc-600"> ({matchTemplate(slaveConfigs[s.id])})</span>}
-                  </p>
-                )}
-              </div>
-              {(s.linked_masters || []).length > 0 && (
-                <div className="mt-2 flex items-center gap-1 flex-wrap">
-                  <span className="text-[10px] text-zinc-600">copia de</span>
-                  {s.linked_masters.map(m => {
-                    const masterColor = accounts.find(a => a.name === m)?.color || '#3b82f6';
-                    return (
-                    <span key={m} className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{backgroundColor: masterColor + '20', color: masterColor, border: '1px solid ' + masterColor + '40'}}>{m}</span>
-                    );
-                  })}
+              {(slaveStats[s.id]?.positions ?? 0) > 0 && <div className="absolute inset-0 bg-amber-500/8 animate-[pulse_1.5s_ease-in-out_infinite] shadow-[inset_0_0_20px_rgba(245,158,11,0.12)]" />}
+              <div className="relative flex justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <CardHeader className="mb-2 pb-0">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className={`text-base font-semibold text-white ${!autocopy ? 'text-zinc-500' : ''}`}>{s.name}</CardTitle>
+                      <Badge variant="warning">SLAVE</Badge>
+                      {!autocopy && <Badge variant="warning" className="!bg-amber-500/15 !text-amber-400 !border-amber-500/30">PAUSADO</Badge>}
+                    </div>
+                  </CardHeader>
+                  <div className={`space-y-1 text-xs ${!autocopy ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                    <p>Cuenta: {s.login || '—'}</p>
+                    {slaveStats[s.id] && (
+                      <p className={!autocopy ? 'text-zinc-600' : 'text-zinc-300'}>
+                        <span className={slaveStats[s.id].unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                          {slaveStats[s.id].unrealized >= 0 ? '+' : ''}{slaveStats[s.id].unrealized.toFixed(2)} USD
+                        </span>
+                        <span className="text-zinc-600 mx-2">|</span>
+                        <span>{slaveStats[s.id].positions} pos.</span>
+                      </p>
+                    )}
+                    {slaveConfigs[s.id] && (
+                      <p className={!autocopy ? 'text-zinc-600' : 'text-zinc-400'}>
+                        Riesgo: {slaveConfigs[s.id].risk_mode === 'FIXED' ? `${slaveConfigs[s.id].fixed_contracts} contratos` :
+                                 slaveConfigs[s.id].risk_mode === 'RISK_USD' ? `$${slaveConfigs[s.id].risk_usd} USD` :
+                                 slaveConfigs[s.id].risk_mode === 'RISK_PERCENT' ? `${slaveConfigs[s.id].risk_percent}% balance` :
+                                 slaveConfigs[s.id].risk_mode === 'RATIO' ? `x${slaveConfigs[s.id].lot_multiplier} master` :
+                                 'Prop. balance'}
+                        {matchTemplate(slaveConfigs[s.id]) && <span className="text-zinc-600"> ({matchTemplate(slaveConfigs[s.id])})</span>}
+                      </p>
+                    )}
+                  </div>
+                  {(s.linked_masters || []).length > 0 && (
+                    <div className="mt-1 flex items-center gap-1 flex-wrap">
+                      <span className="text-[10px] text-zinc-600">copia de</span>
+                      {s.linked_masters.map(m => {
+                        const masterColor = accounts.find(a => a.name === m)?.color || '#3b82f6';
+                        return (
+                        <span key={m} className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{backgroundColor: masterColor + '20', color: masterColor, border: '1px solid ' + masterColor + '40'}}>{m}</span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-              <div className="mt-3 pt-3 border-t border-zinc-800 flex justify-end">
-                <Button variant="danger" size="sm" onClick={() => setConfirmClose(s)}>
-                  <AlertTriangle size={12} /> Emergency Close
-                </Button>
-              </div>
+                <div className="flex flex-col items-center gap-2 pt-1">
+                  <Switch
+                    checked={autocopy}
+                    onChange={(v) => toggleAutocopy(s.id, v)}
+                  />
+                  <img
+                    src="/stop.png"
+                    alt="Emergency Close"
+                    className="h-16 w-16 cursor-pointer hover:scale-110 transition-transform shrink-0"
+                    onClick={() => setConfirmClose(s)}
+                    title="Cerrar todas las posiciones"
+                  />
+                </div>
               </div>
             </Card>
             );

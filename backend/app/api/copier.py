@@ -50,14 +50,14 @@ def emergency_close(slave_id: str, db: Session = Depends(get_db)):
     if not conn.connect():
         return {"ok": False, "error": "No se pudo conectar al bridge NT8"}
 
-    positions = conn.get_positions()
+    positions = conn.get_positions(slave.login)
     closed = 0
     errors = 0
 
     for p in positions:
         pid = p.get("id", "")
         if pid:
-            result = conn.close_position(str(pid))
+            result = conn.close_position(str(pid), account=slave.login)
             if result and result.get("ok"):
                 closed += 1
                 db.query(TicketMap).filter(

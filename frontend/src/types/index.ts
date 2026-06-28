@@ -43,6 +43,8 @@ export interface SlaveConfig {
   copy_sl: boolean;
   copy_tp: boolean;
   inverse_copy: boolean;
+  copy_modify: boolean;
+  sync_close: boolean;
   delay_sec: number;
   magic_number: number;
 }
@@ -83,6 +85,8 @@ export interface SlaveTemplate {
   copy_sl: boolean;
   copy_tp: boolean;
   inverse_copy: boolean;
+  copy_modify: boolean;
+  sync_close: boolean;
   delay_sec: number;
   magic_number: number;
   created_at: string;

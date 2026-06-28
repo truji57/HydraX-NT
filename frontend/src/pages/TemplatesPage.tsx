@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Input, Select, Label, DecimalInput } from '../components/ui/input';
+import { Input, Select, Label, DecimalInput, Checkbox } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { api } from '../lib/api';
 import { useStore } from '../store';
@@ -21,6 +21,8 @@ const emptyTemplate: Omit<SlaveTemplate, 'id' | 'created_at' | 'updated_at'> = {
   copy_sl: true,
   copy_tp: true,
   inverse_copy: false,
+  copy_modify: true,
+  sync_close: false,
   delay_sec: 0,
   magic_number: 0,
 };
@@ -74,7 +76,7 @@ export default function TemplatesPage() {
       risk_percent: t.risk_percent, risk_usd: t.risk_usd, lot_multiplier: t.lot_multiplier,
       max_contracts: t.max_contracts, max_positions: t.max_positions,
       autocopy_enable: t.autocopy_enable, copy_sl: t.copy_sl, copy_tp: t.copy_tp,
-      inverse_copy: t.inverse_copy, delay_sec: t.delay_sec, magic_number: t.magic_number,
+      inverse_copy: t.inverse_copy, copy_modify: t.copy_modify, sync_close: t.sync_close, delay_sec: t.delay_sec, magic_number: t.magic_number,
     });
     setShowForm(true);
   };
@@ -109,6 +111,12 @@ export default function TemplatesPage() {
             <div><Label>Max Posiciones</Label><Input type="number" value={form.max_positions} onChange={e => setForm({...form, max_positions: Number(e.target.value)})} /></div>
             <div><Label>Delay (seg)</Label><DecimalInput value={form.delay_sec} onChange={v => setForm({...form, delay_sec: v})} /></div>
             <div><Label>Magic Number</Label><Input type="number" value={form.magic_number} onChange={e => setForm({...form, magic_number: Number(e.target.value)})} /></div>
+          </div>
+          <div className="flex flex-wrap gap-6">
+            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={form.copy_sl} onChange={e => setForm({...form, copy_sl: e.target.checked})} />Copiar SL</label>
+            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={form.copy_tp} onChange={e => setForm({...form, copy_tp: e.target.checked})} />Copiar TP</label>
+            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={form.copy_modify} onChange={e => setForm({...form, copy_modify: e.target.checked})} />Copiar Modificaciones</label>
+            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={form.sync_close} onChange={e => setForm({...form, sync_close: e.target.checked})} />Cierre Sincronizado</label>
           </div>
           <div className="flex gap-2 justify-end"><Button variant="ghost" onClick={resetForm}>Cancelar</Button><Button variant="primary" onClick={handleSubmit}>{editing ? 'Guardar' : 'Crear'}</Button></div>
         </Card>

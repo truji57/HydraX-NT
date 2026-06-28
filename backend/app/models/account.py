@@ -78,6 +78,8 @@ class SlaveConfig(Base):
     copy_sl = Column(Boolean, default=True)
     copy_tp = Column(Boolean, default=True)
     inverse_copy = Column(Boolean, default=False)
+    copy_modify = Column(Boolean, default=True)
+    sync_close = Column(Boolean, default=False)
     delay_sec = Column(Float, default=0.0)
     magic_number = Column(Integer, default=0)
 
@@ -112,6 +114,8 @@ class SlaveTemplate(Base):
     copy_sl = Column(Boolean, default=True)
     copy_tp = Column(Boolean, default=True)
     inverse_copy = Column(Boolean, default=False)
+    copy_modify = Column(Boolean, default=True)
+    sync_close = Column(Boolean, default=False)
     delay_sec = Column(Float, default=0.0)
     magic_number = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)

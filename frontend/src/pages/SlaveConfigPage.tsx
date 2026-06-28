@@ -45,7 +45,9 @@ export default function SlaveConfigPage() {
         t.max_positions === cfg.max_positions &&
         t.autocopy_enable === cfg.autocopy_enable &&
         t.delay_sec === cfg.delay_sec &&
-        t.magic_number === (cfg.magic_number ?? 0)
+        t.magic_number === (cfg.magic_number ?? 0) &&
+        t.copy_modify === cfg.copy_modify &&
+        t.sync_close === cfg.sync_close
       );
       setActiveTemplateId(match?.id || '');
     } catch { showToast('Error cargando config', 'error'); }
@@ -82,6 +84,8 @@ export default function SlaveConfigPage() {
       copy_sl: t.copy_sl,
       copy_tp: t.copy_tp,
       inverse_copy: t.inverse_copy,
+      copy_modify: t.copy_modify,
+      sync_close: t.sync_close,
       delay_sec: t.delay_sec,
       magic_number: t.magic_number,
     });
@@ -188,9 +192,13 @@ export default function SlaveConfigPage() {
               <p className="text-xs text-zinc-500">{config.autocopy_enable ? 'El slave esta copiando activamente' : 'El slave no copiara operaciones'}</p>
             </div>
             <Switch checked={config.autocopy_enable} onChange={v => updateConfig({autocopy_enable: v})} />
-            {false && <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_sl} onChange={e => setConfig({...config, copy_sl: e.target.checked})} />Copiar SL</label>}
-            {false && <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_tp} onChange={e => setConfig({...config, copy_tp: e.target.checked})} />Copiar TP</label>}
-            {false && <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.inverse_copy} onChange={e => setConfig({...config, inverse_copy: e.target.checked})} />Copia Inversa</label>}
+          </div>
+
+          <div className="flex flex-wrap gap-6">
+            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_sl} onChange={e => updateConfig({copy_sl: e.target.checked})} />Copiar SL</label>
+            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_tp} onChange={e => updateConfig({copy_tp: e.target.checked})} />Copiar TP</label>
+            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.copy_modify} onChange={e => updateConfig({copy_modify: e.target.checked})} />Copiar Modificaciones</label>
+            <label className="flex items-center gap-2 text-sm text-zinc-300"><Checkbox checked={config.sync_close} onChange={e => updateConfig({sync_close: e.target.checked})} />Cierre Sincronizado</label>
           </div>
         </Card>
       )}
