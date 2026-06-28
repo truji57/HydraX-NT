@@ -94,7 +94,7 @@ export default function TemplatesPage() {
             <h3 className="text-sm font-medium text-white">{editing ? 'Editar' : 'Nueva'} Plantilla</h3>
             <Button variant="ghost" size="sm" onClick={resetForm}><X size={14} /></Button>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div><Label>Nombre</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
             <div><Label>Modo de Riesgo</Label><Select value={form.risk_mode} onChange={e => setForm({...form, risk_mode: e.target.value as SlaveTemplate['risk_mode']})}>
               <option value="FIXED">Contratos Fijos</option>

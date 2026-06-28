@@ -109,8 +109,8 @@ export default function DashboardPage() {
       </div>
 
       <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Master <span className="text-emerald-400">({masters.length})</span></h3>
-        <div className="grid grid-cols-3 gap-4">
-          {masters.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas master configuradas.</p>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {masters.length === 0 && <p className="text-sm text-zinc-600 col-span-full">No hay cuentas master configuradas.</p>}
           {masters.map(m => (
             <Card key={m.id} className={`relative overflow-hidden ${copierStatus.running ? 'border-emerald-500/20' : ''} ${m.copy_enable === false ? 'opacity-60' : ''} ${(slaveStats[m.id]?.positions ?? 0) > 0 ? 'border-emerald-500/40' : ''}`}>
               {copierStatus.running && m.copy_enable !== false && <div className="absolute inset-0 bg-emerald-500/5 animate-[pulse_3s_ease-in-out_infinite]" />}
@@ -136,15 +136,15 @@ export default function DashboardPage() {
       </div>
 
       <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Slave <span className="text-amber-400">({slaves.length})</span></h3>
-        <div className="grid grid-cols-3 gap-4">
-          {slaves.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas slave configuradas.</p>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {slaves.length === 0 && <p className="text-sm text-zinc-600 col-span-full">No hay cuentas slave configuradas.</p>}
           {slaves.map(s => {
             const autocopy = slaveConfigs[s.id]?.autocopy_enable ?? true;
             return (
             <Card key={s.id} className={`relative overflow-hidden ${!autocopy ? 'opacity-60 border-amber-800/40' : copierStatus.running ? 'border-amber-500/20' : ''} ${(slaveStats[s.id]?.positions ?? 0) > 0 ? 'border-amber-500/40' : ''}`}>
               {copierStatus.running && autocopy && <div className="absolute inset-0 bg-amber-500/4 animate-[pulse_3s_ease-in-out_infinite]" />}
               {(slaveStats[s.id]?.positions ?? 0) > 0 && <div className="absolute inset-0 bg-amber-500/8 animate-[pulse_1.5s_ease-in-out_infinite] shadow-[inset_0_0_20px_rgba(245,158,11,0.12)]" />}
-              <div className="relative flex justify-between gap-3">
+              <div className="relative flex flex-col sm:flex-row sm:justify-between sm:gap-3">
                 <div className="flex-1 min-w-0">
                   <CardHeader className="mb-2 pb-0">
                     <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col items-center gap-2 pt-1">
+                <div className="flex flex-row sm:flex-col items-center sm:items-center gap-2 pt-0 sm:pt-1">
                   <Switch
                     checked={autocopy}
                     onChange={(v) => toggleAutocopy(s.id, v)}

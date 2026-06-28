@@ -131,7 +131,7 @@ export default function AccountsPage() {
             <h3 className="text-sm font-medium text-white">{editing ? 'Editar' : 'Nueva'} Cuenta</h3>
             <Button variant="ghost" size="sm" onClick={resetForm}><X size={14} /></Button>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><Label>Nombre</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
             <div><Label>Rol</Label><Select value={form.role} onChange={e => setForm({...form, role: e.target.value as 'MASTER'|'SLAVE'})}><option value="MASTER">MASTER</option><option value="SLAVE">SLAVE</option></Select></div>
             <div><Label>Cuenta NT8</Label><Input value={form.login||''} onChange={e => setForm({...form, login: e.target.value})} placeholder="Nombre exacto en NT8 (Sim101...)" /></div>

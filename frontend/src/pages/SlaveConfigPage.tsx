@@ -107,7 +107,7 @@ export default function SlaveConfigPage() {
     <div className="space-y-6">
       <div><h2 className="text-xl font-bold text-white">Configuracion de Slaves</h2><p className="text-sm text-zinc-500">Selecciona un slave</p></div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {slaves.map(s => (
           <Card key={s.id} className={`cursor-pointer p-4 ${selectedSlave?.id === s.id ? 'border-emerald-500/50 bg-emerald-500/5' : 'hover:border-zinc-600'}`} onClick={() => selectSlave(s)}>
             <Badge variant="warning" className="mb-2">SLAVE</Badge>
@@ -158,7 +158,7 @@ export default function SlaveConfigPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <div className="flex items-center gap-1 mb-1"><Label>Modo de Riesgo</Label><button onClick={() => setShowRiskHelp(!showRiskHelp)} className="text-zinc-500 hover:text-zinc-300" title="Ayuda"><HelpCircle size={14} /></button></div>
               <Select value={config.risk_mode} onChange={e => updateConfig({risk_mode: e.target.value as SlaveConfig['risk_mode']})}>
