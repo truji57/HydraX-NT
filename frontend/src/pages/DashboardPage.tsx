@@ -14,14 +14,23 @@ export default function DashboardPage() {
   const [closing, setClosing] = useState(false);
   const [slaveConfigs, setSlaveConfigs] = useState<Record<string, SlaveConfig>>({});
   const [templates, setTemplates] = useState<SlaveTemplate[]>([]);
+  const [slaveStats, setSlaveStats] = useState<Record<string, {unrealized: number; positions: number}>>({});
 
   useEffect(() => {
     fetchStatus();
     useStore.getState().fetchAccounts();
     api.get<SlaveTemplate[]>('/templates').then(setTemplates).catch(() => {});
-    const interval = setInterval(fetchStatus, 5000);
+    const interval = setInterval(() => { fetchStatus(); fetchSlaveStats(); }, 5000);
+    fetchSlaveStats();
     return () => clearInterval(interval);
   }, []);
+
+  const fetchSlaveStats = async () => {
+    try {
+      const resp = await api.get<{ok: boolean; data: Record<string, {unrealized: number; positions: number}>}>('/copier/dashboard');
+      if (resp.ok) setSlaveStats(resp.data);
+    } catch {}
+  };
 
   const masters = accounts.filter(a => a.role === 'MASTER' && a.active);
   const slaves = accounts.filter(a => a.role === 'SLAVE' && a.active);
@@ -88,20 +97,30 @@ export default function DashboardPage() {
         <Badge variant={copierStatus.running ? 'success' : 'default'}>{copierStatus.running ? 'RUNNING' : 'STOPPED'}</Badge>
       </div>
 
-      <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Master <span className="text-emerald-400">({copierStatus.active_masters})</span></h3>
+      <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Master <span className="text-emerald-400">({masters.length})</span></h3>
         <div className="grid grid-cols-3 gap-4">
           {masters.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas master configuradas.</p>}
           {masters.map(m => (
             <Card key={m.id} className={`relative overflow-hidden ${copierStatus.running ? 'border-emerald-500/20' : ''}`}>
               {copierStatus.running && <div className="absolute inset-0 bg-emerald-500/5 animate-[pulse_3s_ease-in-out_infinite]" />}
               <div className="relative"><CardHeader><div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full shrink-0" style={{backgroundColor: m.color || '#3b82f6'}} /><CardTitle>{m.name}</CardTitle></div><Badge variant="success">MASTER</Badge></CardHeader>
-              <p className="text-xs text-zinc-500">Cuenta: {m.login || '—'}</p></div>
+              <p className="text-xs text-zinc-500">Cuenta: {m.login || '—'}</p>
+              {slaveStats[m.id] && (
+                <p className="text-xs text-zinc-400">
+                  <span className={slaveStats[m.id].unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                    {slaveStats[m.id].unrealized >= 0 ? '+' : ''}{slaveStats[m.id].unrealized.toFixed(2)} USD
+                  </span>
+                  <span className="text-zinc-600 mx-2">|</span>
+                  <span>{slaveStats[m.id].positions} pos.</span>
+                </p>
+              )}
+            </div>
             </Card>
           ))}
         </div>
       </div>
 
-      <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Slave <span className="text-amber-400">({copierStatus.active_slaves})</span></h3>
+      <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Slave <span className="text-amber-400">({slaves.length})</span></h3>
         <div className="grid grid-cols-3 gap-4">
           {slaves.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas slave configuradas.</p>}
           {slaves.map(s => {
@@ -122,6 +141,15 @@ export default function DashboardPage() {
             </CardHeader>
               <div className={`space-y-1 text-xs ${!autocopy ? 'text-zinc-600' : 'text-zinc-500'}`}>
                 <p>Cuenta: {s.login || '—'}</p>
+                {slaveStats[s.id] && (
+                  <p className={!autocopy ? 'text-zinc-600' : 'text-zinc-300'}>
+                    <span className={slaveStats[s.id].unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                      {slaveStats[s.id].unrealized >= 0 ? '+' : ''}{slaveStats[s.id].unrealized.toFixed(2)} USD
+                    </span>
+                    <span className="text-zinc-600 mx-2">|</span>
+                    <span>{slaveStats[s.id].positions} pos.</span>
+                  </p>
+                )}
                 {slaveConfigs[s.id] && (
                   <p className={!autocopy ? 'text-zinc-600' : 'text-zinc-400'}>
                     Riesgo: {slaveConfigs[s.id].risk_mode === 'FIXED' ? `${slaveConfigs[s.id].fixed_contracts} contratos` :

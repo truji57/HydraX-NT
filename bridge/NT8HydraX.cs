@@ -217,12 +217,15 @@ namespace NinjaTrader.NinjaScript.AddOns
 
             try
             {
+                double pnl = 0;
+                try { pnl = acc.Get(AccountItem.UnrealizedProfitLoss, Currency.UsDollar); } catch { }
                 var data = new Dictionary<string, object>
                 {
                     ["ok"] = true,
                     ["name"] = acc.Name,
                     ["balance"] = acc.Get(AccountItem.CashValue, Currency.UsDollar),
                     ["positions"] = acc.Positions.Count(p => p.Quantity != 0),
+                    ["unrealized"] = pnl,
                 };
                 return _json.Serialize(data);
             }

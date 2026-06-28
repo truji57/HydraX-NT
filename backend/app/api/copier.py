@@ -77,3 +77,32 @@ def sync_positions():
     from app.engine.ticket_mapper import reconcile_stale_positions
     fixed = reconcile_stale_positions()
     return {"ok": True, "fixed": fixed}
+
+
+@router.get("/dashboard")
+def dashboard_stats():
+    from app.models.account import Account
+    from app.engine.nt8_connector import NT8Connector
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        accounts = db.query(Account).filter(Account.active == True).all()
+        result = {}
+        for acc in accounts:
+            try:
+                conn = NT8Connector(acc.bridge_host, acc.bridge_port)
+                info = conn.get_account(acc.login)
+                if info and info.get("ok"):
+                    result[acc.id] = {
+                        "unrealized": info.get("unrealized", 0),
+                        "positions": info.get("positions", 0),
+                    }
+                else:
+                    result[acc.id] = {"unrealized": 0, "positions": 0}
+                conn.disconnect()
+            except Exception:
+                result[acc.id] = {"unrealized": 0, "positions": 0}
+        return {"ok": True, "data": result}
+    finally:
+        db.close()
