@@ -14,7 +14,7 @@ const emptyForm: AccountForm = {
   poll_interval: 0.5, active: true, color: '#3b82f6',
 };
 
-function AccountGroup({ label, accounts, testResults, testing, copierRunning, allAccounts, onTest, onEdit, onDelete }: {
+function AccountGroup({ label, accounts, testResults, testing, copierRunning, allAccounts, onTest, onEdit, onDeleteClick }: {
   label: string;
   accounts: Account[];
   testResults: Record<string, TestResult>;
@@ -23,7 +23,7 @@ function AccountGroup({ label, accounts, testResults, testing, copierRunning, al
   allAccounts: Account[];
   onTest: (id: string) => void;
   onEdit: (a: Account) => void;
-  onDelete: (id: string) => void;
+  onDeleteClick: (a: Account) => void;
 }) {
   if (accounts.length === 0) return null;
   return (
@@ -54,7 +54,7 @@ function AccountGroup({ label, accounts, testResults, testing, copierRunning, al
             {testResults[a.id] && <Badge variant={testResults[a.id].success ? 'success' : 'danger'}>{testResults[a.id].message || (testResults[a.id].success ? 'OK' : 'Fallo')}</Badge>}
             <Button variant="outline" size="sm" onClick={() => onTest(a.id)} disabled={testing === a.id}><Wifi size={14} /> {testing === a.id ? '...' : 'Test'}</Button>
             <Button variant="ghost" size="sm" onClick={() => onEdit(a)} disabled={copierRunning} title={copierRunning ? 'Para el copiador para editar' : ''}><Edit3 size={14} /></Button>
-            <Button variant="ghost" size="sm" onClick={() => onDelete(a.id)} disabled={copierRunning} title={copierRunning ? 'Para el copiador para eliminar' : ''}><Trash2 size={14} className="text-red-400" /></Button>
+            <Button variant="ghost" size="sm" onClick={() => onDeleteClick(a)} disabled={copierRunning} title={copierRunning ? 'Para el copiador para eliminar' : ''}><Trash2 size={14} className="text-red-400" /></Button>
           </div>
         </Card>
       ))}
@@ -70,6 +70,7 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
+  const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
 
   useEffect(() => { fetchAccounts(); }, []);
 
@@ -92,8 +93,7 @@ export default function AccountsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Eliminar esta cuenta?')) return;
-    try { await api.delete(`/accounts/${id}`); showToast('Eliminada', 'ok'); fetchAccounts(); }
+    try { await api.delete(`/accounts/${id}`); showToast('Eliminada', 'ok'); fetchAccounts(); setDeleteTarget(null); }
     catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error', 'error'); }
   };
 
@@ -161,7 +161,7 @@ export default function AccountsPage() {
           allAccounts={accounts}
           onTest={handleTest}
           onEdit={editAccount}
-          onDelete={handleDelete}
+          onDeleteClick={setDeleteTarget}
         />
         {accounts.some(a => a.role === 'MASTER') && accounts.some(a => a.role === 'SLAVE') && (
           <div className="border-t border-zinc-800" />
@@ -175,9 +175,28 @@ export default function AccountsPage() {
           allAccounts={accounts}
           onTest={handleTest}
           onEdit={editAccount}
-          onDelete={handleDelete}
+          onDeleteClick={setDeleteTarget}
         />
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <Card className="w-[400px] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-red-400">Eliminar Cuenta</h3>
+              <button onClick={() => setDeleteTarget(null)} className="text-zinc-500 hover:text-white"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-zinc-400 mb-2">Vas a eliminar permanentemente:</p>
+            <p className="text-sm font-medium text-white mb-1">{deleteTarget.name}</p>
+            <p className="text-xs text-zinc-500 mb-4">({deleteTarget.role}) Cuenta: {deleteTarget.login || '—'}</p>
+            <p className="text-xs text-red-400 mb-4">Esta accion no se puede deshacer.</p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+              <Button variant="danger" size="sm" onClick={() => handleDelete(deleteTarget.id)}>Eliminar</Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

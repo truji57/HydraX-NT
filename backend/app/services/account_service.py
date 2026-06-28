@@ -54,9 +54,21 @@ def update_account(db: Session, account_id: str, data: AccountUpdate) -> Optiona
 
 
 def delete_account(db: Session, account_id: str) -> bool:
+    from app.models.ticket_map import TicketMap
+    from app.models.trade_log import TradeLog
+
     account = db.query(Account).filter(Account.id == account_id).first()
     if not account:
         return False
+    db.query(TicketMap).filter(
+        (TicketMap.master_account_id == account_id) | (TicketMap.slave_account_id == account_id)
+    ).delete(synchronize_session=False)
+    db.query(TradeLog).filter(
+        (TradeLog.master_account_id == account_id) | (TradeLog.slave_account_id == account_id)
+    ).delete(synchronize_session=False)
+    db.query(SlaveMasterLink).filter(
+        (SlaveMasterLink.master_id == account_id) | (SlaveMasterLink.slave_id == account_id)
+    ).delete(synchronize_session=False)
     db.delete(account)
     db.commit()
     return True
