@@ -29,6 +29,7 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     _migrate_slave_ticket()
     _migrate_add_color()
+    _migrate_copy_enable()
     _migrate_slave_templates()
 
 
@@ -62,6 +63,22 @@ def _migrate_add_color():
                 logger = get_logger("hydrax.db")
                 logger.info("Migrating: adding accounts.color column")
                 conn.exec_driver_sql("ALTER TABLE accounts ADD COLUMN color VARCHAR(7) DEFAULT '#3b82f6'")
+                conn.commit()
+    except Exception:
+        pass
+
+
+def _migrate_copy_enable():
+    try:
+        with engine.connect() as conn:
+            result = conn.exec_driver_sql(
+                "SELECT name FROM pragma_table_info('accounts') WHERE name='copy_enable'"
+            ).fetchone()
+            if not result:
+                from app.utils.logger import get_logger
+                logger = get_logger("hydrax.db")
+                logger.info("Migrating: adding accounts.copy_enable column")
+                conn.exec_driver_sql("ALTER TABLE accounts ADD COLUMN copy_enable BOOLEAN DEFAULT 1")
                 conn.commit()
     except Exception:
         pass

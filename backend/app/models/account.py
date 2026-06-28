@@ -38,6 +38,7 @@ class Account(Base):
     poll_interval = Column(Float, default=0.5)
     active = Column(Boolean, default=True)
     color = Column(String(7), default="#3b82f6")
+    copy_enable = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

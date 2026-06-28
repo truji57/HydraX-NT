@@ -11,6 +11,7 @@ export interface Account {
   poll_interval: number;
   active: boolean;
   color: string;
+  copy_enable: boolean;
   created_at: string;
   updated_at: string;
   linked_masters: string[];

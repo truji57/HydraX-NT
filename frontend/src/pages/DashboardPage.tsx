@@ -59,6 +59,15 @@ export default function DashboardPage() {
     }
   };
 
+  const toggleMasterCopy = async (master: Account, enabled: boolean) => {
+    try {
+      await api.put(`/accounts/${master.id}`, { copy_enable: enabled });
+      useStore.getState().fetchAccounts();
+    } catch {
+      useStore.getState().showToast('Error al actualizar', 'error');
+    }
+  };
+
   const matchTemplate = (cfg: SlaveConfig): string | null => {
     const t = templates.find(tp =>
       tp.risk_mode === cfg.risk_mode &&
@@ -101,10 +110,13 @@ export default function DashboardPage() {
         <div className="grid grid-cols-3 gap-4">
           {masters.length === 0 && <p className="text-sm text-zinc-600 col-span-3">No hay cuentas master configuradas.</p>}
           {masters.map(m => (
-            <Card key={m.id} className={`relative overflow-hidden ${copierStatus.running ? 'border-emerald-500/20' : ''}`}>
-              {copierStatus.running && <div className="absolute inset-0 bg-emerald-500/5 animate-[pulse_3s_ease-in-out_infinite]" />}
-              <div className="relative"><CardHeader><div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full shrink-0" style={{backgroundColor: m.color || '#3b82f6'}} /><CardTitle>{m.name}</CardTitle></div><Badge variant="success">MASTER</Badge></CardHeader>
-              <p className="text-xs text-zinc-500">Cuenta: {m.login || '—'}</p>
+            <Card key={m.id} className={`relative overflow-hidden ${copierStatus.running ? 'border-emerald-500/20' : ''} ${m.copy_enable === false ? 'opacity-60' : ''}`}>
+              {copierStatus.running && m.copy_enable !== false && <div className="absolute inset-0 bg-emerald-500/5 animate-[pulse_3s_ease-in-out_infinite]" />}
+              <div className="relative"><CardHeader><div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full shrink-0" style={{backgroundColor: m.color || '#3b82f6', opacity: m.copy_enable === false ? 0.4 : 1}} /><CardTitle className={m.copy_enable === false ? 'text-zinc-500' : ''}>{m.name}</CardTitle></div><Badge variant="success">MASTER</Badge></CardHeader>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-zinc-500">Cuenta: {m.login || '—'}</p>
+                <Switch checked={m.copy_enable !== false} onChange={(v) => toggleMasterCopy(m, v)} />
+              </div>
               {slaveStats[m.id] && (
                 <p className="text-xs text-zinc-400">
                   <span className={slaveStats[m.id].unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}>

@@ -14,6 +14,7 @@ class AccountBase(BaseModel):
     poll_interval: float = Field(0.5, ge=0.1)
     active: bool = True
     color: str = "#3b82f6"
+    copy_enable: bool = True
 
 
 class AccountCreate(AccountBase):
@@ -30,6 +31,7 @@ class AccountUpdate(BaseModel):
     poll_interval: Optional[float] = Field(None, ge=0.1)
     active: Optional[bool] = None
     color: Optional[str] = None
+    copy_enable: Optional[bool] = None
 
 
 class AccountResponse(BaseModel):
@@ -42,6 +44,7 @@ class AccountResponse(BaseModel):
     poll_interval: float
     active: bool
     color: str
+    copy_enable: bool
     created_at: datetime
     updated_at: datetime
     linked_masters: list[str] = []

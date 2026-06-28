@@ -5,7 +5,7 @@ import multiprocessing as mp
 from datetime import datetime
 
 from app.database import SessionLocal
-from app.models.account import SlaveConfig
+from app.models.account import Account, SlaveConfig
 from app.models.trade_log import TradeLog, TradeAction, TradeResult
 from app.engine.nt8_connector import NT8Connector
 from app.engine.ticket_mapper import (
@@ -93,6 +93,8 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
     except Exception:
         pass
 
+    master_enabled = True
+
     while not stop_flag.is_set():
         try:
             cur_positions = {}
@@ -102,6 +104,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                 cur_positions[pid] = p
 
             cur_orders = {str(o.get("ticket", hash(str(o)))): o for o in conn.get_orders(login)}
+
 
             for pid, p in list(cur_positions.items()):
                 if pid not in prev_positions:
@@ -121,6 +124,8 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                     symbol = p.get("symbol", "?")
                     contracts = p.get("contracts", 1)
                     logger.info(f"{display}: new position {pid} {symbol} {direction} sl={sl} tp={tp} raw_tick_val={p.get('tick_value')} raw_tick_size={p.get('tick_size')}")
+                    if not master_enabled:
+                        continue
                     tick_size = p.get("tick_size", 0.25)
                     tick_value = p.get("tick_value", 12.5)
                     cmd = {
@@ -174,22 +179,23 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                             pass
                     else:
                         logger.info(f"{display}: manual close {pid}, sending CLOSE to slaves")
-                        cmd = {
-                            "action": "CLOSE",
-                            "payload": {
-                                "position_ticket": hash(pid) % 1000000,
-                                "symbol": symbol,
-                                "direction": p.get("direction", "BUY"),
-                                "contracts": p.get("contracts", 1),
-                                "master_account_id": account_id,
-                                "bridge_host": bridge_host,
-                                "bridge_port": bridge_port,
-                                "nt8_position_id": pid,
-                            },
-                        }
-                        for q in slave_queues.values():
-                            if not stop_flag.is_set():
-                                q.put(cmd)
+                        if master_enabled:
+                            cmd = {
+                                "action": "CLOSE",
+                                "payload": {
+                                    "position_ticket": hash(pid) % 1000000,
+                                    "symbol": symbol,
+                                    "direction": p.get("direction", "BUY"),
+                                    "contracts": p.get("contracts", 1),
+                                    "master_account_id": account_id,
+                                    "bridge_host": bridge_host,
+                                    "bridge_port": bridge_port,
+                                    "nt8_position_id": pid,
+                                },
+                            }
+                            for q in slave_queues.values():
+                                if not stop_flag.is_set():
+                                    q.put(cmd)
                         try:
                             event_queue.put({
                                 "type": "position_close",
@@ -213,22 +219,23 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                             })
                         except Exception:
                             pass
-                        cmd = {
-                            "action": "MODIFY",
-                            "payload": {
-                                "position_ticket": hash(pid) % 1000000,
-                                "symbol": cur.get("symbol", "?"),
-                                "new_sl": cur.get("sl", 0) or 0,
-                                "new_tp": cur.get("tp", 0) or 0,
-                                "master_account_id": account_id,
-                                "bridge_host": bridge_host,
-                                "bridge_port": bridge_port,
-                                "nt8_position_id": pid,
-                            },
-                        }
-                        for q in slave_queues.values():
-                            if not stop_flag.is_set():
-                                q.put(cmd)
+                        if master_enabled:
+                            cmd = {
+                                "action": "MODIFY",
+                                "payload": {
+                                    "position_ticket": hash(pid) % 1000000,
+                                    "symbol": cur.get("symbol", "?"),
+                                    "new_sl": cur.get("sl", 0) or 0,
+                                    "new_tp": cur.get("tp", 0) or 0,
+                                    "master_account_id": account_id,
+                                    "bridge_host": bridge_host,
+                                    "bridge_port": bridge_port,
+                                    "nt8_position_id": pid,
+                                },
+                            }
+                            for q in slave_queues.values():
+                                if not stop_flag.is_set():
+                                    q.put(cmd)
 
             prev_positions = cur_positions
 
@@ -265,6 +272,15 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                 info = conn.get_account(login)
                 if info and info.get("ok"):
                     master_balance = float(info.get("balance", 0))
+            except Exception:
+                pass
+
+            try:
+                db = SessionLocal()
+                m = db.query(Account).filter(Account.id == account_id).first()
+                if m:
+                    master_enabled = m.copy_enable if m.copy_enable is not None else True
+                db.close()
             except Exception:
                 pass
 
