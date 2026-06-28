@@ -67,6 +67,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
 
     if not conn.connect():
         logger.error(f"{display}: connection failed")
+        _emit_event(event_queue, "worker_error", {"worker": display, "role": "master", "error": f"No se pudo conectar al bridge {bridge_host}:{bridge_port}"})
         return
 
     logger.info(f"{display}: connected to NT8 bridge")
@@ -305,6 +306,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
     conn = NT8Connector(bridge_host, bridge_port)
     if not conn.connect():
         logger.error(f"{display}: connection failed")
+        _emit_event(event_queue, "worker_error", {"worker": display, "role": "slave", "error": f"No se pudo conectar al bridge {bridge_host}:{bridge_port}"})
         return
 
     logger.info(f"{display}: connected to NT8 bridge")

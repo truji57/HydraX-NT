@@ -27,6 +27,10 @@ export function Layout() {
       case 'copy_error':
         text = `${d.slave || ''}: ${d.action} ERROR ${d.symbol} - ${d.error || 'unknown'}`;
         break;
+      case 'worker_error':
+        text = `ERROR: ${d.worker || ''} - ${d.error || 'sin conexion'}`;
+        useStore.getState().showToast(text, 'error');
+        break;
       default:
         return;
     }

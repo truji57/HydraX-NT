@@ -7,16 +7,21 @@ echo ============================
 echo.
 
 echo [1/3] Deteniendo servicios activos...
+taskkill /F /IM python.exe 2>nul
+taskkill /F /IM python3.exe 2>nul
+taskkill /F /IM node.exe 2>nul
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8005 ^| findstr LISTENING') do taskkill /F /PID %%a 2>nul
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5173 ^| findstr LISTENING') do taskkill /F /PID %%a 2>nul
-timeout /t 1 /nobreak >nul
+timeout /t 4 /nobreak >nul
 echo       Listo.
 echo.
 
 echo [2/3] Buscando actualizaciones...
 git remote set-url origin https://github.com/truji57/HydraX-NT.git
+del /f /q ".git\index.lock" 2>nul
 for /f "delims=" %%h in ('git rev-parse HEAD') do set LOCAL=%%h
-git fetch origin
+echo n | git fetch origin
+git reset --hard origin/master
 if %errorlevel% neq 0 (
     echo       ERROR: No se pudo conectar con GitHub.
     pause
