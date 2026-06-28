@@ -86,6 +86,8 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
     prev_orders = {str(o.get("ticket", hash(str(o)))): o for o in conn.get_orders(login)}
     logger.info(f"{display}: ignoring {len(prev_orders)} existing orders")
 
+    recent_removed_sltp: dict[str, int] = {}
+
     master_balance = 0.0
     try:
         info = conn.get_account(login)
@@ -161,14 +163,35 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                     except Exception:
                         pass
 
+            removed_sltp = set()
+            for ot, o in prev_orders.items():
+                if ot not in cur_orders and o.get("type") in ("STOP", "LIMIT"):
+                    removed_sltp.add(o.get("symbol", ""))
+
+            for sym in removed_sltp:
+                recent_removed_sltp[sym] = 3
+            decay = [s for s, c in recent_removed_sltp.items() if c <= 1]
+            for s in decay:
+                del recent_removed_sltp[s]
+            for s in list(recent_removed_sltp.keys()):
+                recent_removed_sltp[s] -= 1
+
+            modified_to_zero = set()
+            for pid, cur in cur_positions.items():
+                if pid in prev_positions:
+                    prev = prev_positions[pid]
+                    prev_sl = prev.get("sl", 0) or 0
+                    prev_tp = prev.get("tp", 0) or 0
+                    cur_sl = cur.get("sl", 0) or 0
+                    cur_tp = cur.get("tp", 0) or 0
+                    if (prev_sl > 0 and cur_sl == 0) or (prev_tp > 0 and cur_tp == 0):
+                        modified_to_zero.add(pid)
+
             for pid, p in prev_positions.items():
                 if pid not in cur_positions:
                     pending_open.pop(pid, None)
                     symbol = p.get("symbol", "?")
-                    filled_target = any(
-                        o.get("symbol") == symbol and o.get("type") in ("STOP", "LIMIT") and o.get("state") == "Filled"
-                        for o in cur_orders.values()
-                    )
+                    filled_target = symbol in recent_removed_sltp or pid in modified_to_zero
                     close_reason = "target" if filled_target else "manual"
                     logger.info(f"{display}: closed position {pid} reason={close_reason}")
                     if close_reason == "manual" and master_enabled:
@@ -199,15 +222,17 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
             for pid, cur in cur_positions.items():
                 if pid in prev_positions:
                     prev = prev_positions[pid]
-                    if abs((prev.get("sl", 0) or 0) - (cur.get("sl", 0) or 0)) > 0.01 or \
-                       abs((prev.get("tp", 0) or 0) - (cur.get("tp", 0) or 0)) > 0.01:
+                    new_sl = cur.get("sl", 0) or 0
+                    new_tp = cur.get("tp", 0) or 0
+                    if (new_sl > 0 or new_tp > 0) and (
+                        abs((prev.get("sl", 0) or 0) - new_sl) > 0.01 or
+                        abs((prev.get("tp", 0) or 0) - new_tp) > 0.01):
                         logger.info(f"{display}: modify position {pid}")
                         try:
                             event_queue.put({
                                 "type": "position_modify",
-                                "data": {"master": display, "symbol": cur.get("symbol", "?"),
-                                         "ticket": pid, "new_sl": cur.get("sl", 0) or 0,
-                                         "new_tp": cur.get("tp", 0) or 0},
+                            "data": {"master": display, "symbol": cur.get("symbol", "?"),
+                                     "ticket": pid, "new_sl": new_sl, "new_tp": new_tp},
                             })
                         except Exception:
                             pass
@@ -217,8 +242,8 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                                 "payload": {
                                     "position_ticket": hash(pid) % 1000000,
                                     "symbol": cur.get("symbol", "?"),
-                                    "new_sl": cur.get("sl", 0) or 0,
-                                    "new_tp": cur.get("tp", 0) or 0,
+                                    "new_sl": new_sl,
+                                    "new_tp": new_tp,
                                     "master_account_id": account_id,
                                     "bridge_host": bridge_host,
                                     "bridge_port": bridge_port,
@@ -299,9 +324,6 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                        event_queue: mp.Queue):
     display = name or f"nt8-slave"
 
-    if not autocopy_enable:
-        return
-
     conn = NT8Connector(bridge_host, bridge_port)
     if not conn.connect():
         logger.error(f"{display}: connection failed")
@@ -359,6 +381,8 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         except Exception:
             pass
 
+    idle_cycles = 0
+
     while not stop_flag.is_set():
         cmd = None
         try:
@@ -367,6 +391,10 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             pass
 
         if cmd is None:
+            idle_cycles += 1
+            if idle_cycles >= 4:
+                idle_cycles = 0
+                reload_config()
             continue
         if stop_flag.is_set():
             break
@@ -478,7 +506,6 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 continue
 
             symbol = payload.get("symbol", "")
-            conn.modify_position(symbol, 0, 0, _config["magic_number"], account=login, position_id=slave_position_id)
             result = conn.close_position(slave_position_id, symbol, account=login)
             if result and result.get("ok"):
                 mark_closed(master_ticket, account_id)
@@ -486,8 +513,8 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                            payload.get("contracts", 0), 0, None, None, TradeResult.SUCCESS,
                            master_ticket=master_ticket, slave_ticket=hash(slave_position_id) % 1000000)
                 _emit_event(event_queue, "copy_ok", {"slave": display, "symbol": payload.get("symbol", ""),
-                           "action": "CLOSE", "master_ticket": master_ticket})
-                logger.info(f"{display}: CLOSE OK {payload.get('symbol','?')}")
+                           "action": "CLOSE", "master_ticket": master_ticket, "source": "hydrax"})
+                logger.info(f"{display}: CLOSE OK {payload.get('symbol','?')} [HydraX]")
             else:
                 _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),
                            payload.get("contracts", 0), 0, None, None, TradeResult.FAILED,

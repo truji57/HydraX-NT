@@ -357,13 +357,12 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 if (order.OrderState == OrderState.Filled || order.OrderState == OrderState.PartFilled)
                 {
+                    string ocoId = "HydraX-OCO-" + magic + "-" + DateTime.Now.Ticks;
                     if (sl > 0)
                     {
-                        // For BUY: SL is a Sell Stop. For SELL: SL is a Buy Stop
                         var slAction = direction == "BUY" ? OrderAction.Sell : OrderAction.Buy;
-                        var slType = OrderType.StopMarket;
-                        var slOrder = acc.CreateOrder(instrument, slAction, slType, TimeInForce.Gtc,
-                            contracts, 0, sl, "", "HydraX-SL-" + magic, null);
+                        var slOrder = acc.CreateOrder(instrument, slAction, OrderType.StopMarket, TimeInForce.Gtc,
+                            contracts, 0, sl, ocoId, "HydraX-SL-" + magic, null);
                         if (slOrder != null)
                         {
                             acc.Submit(new[] { slOrder });
@@ -372,11 +371,9 @@ namespace NinjaTrader.NinjaScript.AddOns
                     }
                     if (tp > 0)
                     {
-                        // For BUY: TP is a Sell Limit. For SELL: TP is a Buy Limit
                         var tpAction = direction == "BUY" ? OrderAction.Sell : OrderAction.Buy;
-                        var tpType = OrderType.Limit;
-                        var tpOrder = acc.CreateOrder(instrument, tpAction, tpType, TimeInForce.Gtc,
-                            contracts, tp, 0, "", "HydraX-TP-" + magic, null);
+                        var tpOrder = acc.CreateOrder(instrument, tpAction, OrderType.Limit, TimeInForce.Gtc,
+                            contracts, tp, 0, ocoId, "HydraX-TP-" + magic, null);
                         if (tpOrder != null)
                         {
                             acc.Submit(new[] { tpOrder });
@@ -429,7 +426,7 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 foreach (var o in ordersToCancel)
                 {
-                    for (int i = 0; i < 10; i++)
+                    for (int i = 0; i < 30; i++)
                     {
                         if (o.OrderState == OrderState.Cancelled ||
                             o.OrderState == OrderState.Filled ||
@@ -440,18 +437,20 @@ namespace NinjaTrader.NinjaScript.AddOns
                     Log("HydraX: Cancelled " + o.OrderType + " state=" + o.OrderState + " for " + instrument.FullName, LogLevel.Information);
                 }
 
+                string ocoId = "HydraX-OCO-" + magic + "-" + DateTime.Now.Ticks;
+
                 if (sl > 0)
                 {
                     var slAction = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.Buy;
                     var slOrder = acc.CreateOrder(instrument, slAction, OrderType.StopMarket,
-                        TimeInForce.Gtc, Math.Abs(pos.Quantity), 0, sl, "", "HydraX-SL-" + magic, null);
+                        TimeInForce.Gtc, Math.Abs(pos.Quantity), 0, sl, ocoId, "HydraX-SL-" + magic, null);
                     if (slOrder != null) acc.Submit(new[] { slOrder });
                 }
                 if (tp > 0)
                 {
                     var tpAction = pos.MarketPosition == MarketPosition.Long ? OrderAction.Sell : OrderAction.Buy;
                     var tpOrder = acc.CreateOrder(instrument, tpAction, OrderType.Limit,
-                        TimeInForce.Gtc, Math.Abs(pos.Quantity), tp, 0, "", "HydraX-TP-" + magic, null);
+                        TimeInForce.Gtc, Math.Abs(pos.Quantity), tp, 0, ocoId, "HydraX-TP-" + magic, null);
                     if (tpOrder != null) acc.Submit(new[] { tpOrder });
                 }
 
@@ -495,7 +494,7 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 foreach (var o in ordersToCancel)
                 {
-                    for (int i = 0; i < 10; i++)
+                    for (int i = 0; i < 30; i++)
                     {
                         if (o.OrderState == OrderState.Cancelled ||
                             o.OrderState == OrderState.Filled ||
