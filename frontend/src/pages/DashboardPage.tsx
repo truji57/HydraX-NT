@@ -105,7 +105,7 @@ export default function DashboardPage() {
           <div className="absolute inset-0 rounded-sm bg-gradient-to-r from-emerald-500/20 via-emerald-500/20 via-60% to-transparent" />
           <h2 className="relative text-2xl font-bold text-white py-2 px-3">Dashboard</h2>
         </div>
-        <Badge variant={copierStatus.running ? 'success' : 'default'}>{copierStatus.running ? 'RUNNING' : 'STOPPED'}</Badge>
+        <Badge variant={copierStatus.running ? 'success' : 'default'} className="text-sm px-3 py-1">{copierStatus.running ? 'RUNNING' : 'STOPPED'}</Badge>
       </div>
 
       <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Master <span className="text-emerald-400">({masters.length})</span></h3>

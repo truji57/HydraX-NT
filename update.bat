@@ -21,12 +21,6 @@ git remote set-url origin https://github.com/truji57/HydraX-NT.git
 del /f /q ".git\index.lock" 2>nul
 for /f "delims=" %%h in ('git rev-parse HEAD') do set LOCAL=%%h
 echo n | git fetch origin
-git reset --hard origin/master
-if %errorlevel% neq 0 (
-    echo       ERROR: No se pudo conectar con GitHub.
-    pause
-    exit /b 1
-)
 for /f "delims=" %%h in ('git rev-parse origin/master') do set REMOTE=%%h
 
 if "%LOCAL%"=="%REMOTE%" (
@@ -40,8 +34,7 @@ if "%LOCAL%"=="%REMOTE%" (
     exit /b 0
 )
 
-echo       Nueva version detectada.
-echo       Actualizando...
+echo       Nueva version detectada. Actualizando...
 git reset --hard origin/master
 echo       Listo.
 echo.
