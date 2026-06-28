@@ -42,9 +42,9 @@ export default function SettingsPage() {
           <h3 className="text-sm font-medium text-white">Informacion</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-zinc-400">Version</span><span className="text-white">{version || '...'}</span></div>
-            <div className="flex justify-between"><span className="text-zinc-400">Backend</span><span className="text-emerald-400">http://localhost:8001</span></div>
+            <div className="flex justify-between"><span className="text-zinc-400">Backend</span><span className="text-emerald-400">http://localhost:8005</span></div>
             <div className="flex justify-between"><span className="text-zinc-400">Frontend</span><span className="text-emerald-400">http://localhost:5173</span></div>
-            <div className="flex justify-between"><span className="text-zinc-400">API Docs</span><a href="http://localhost:8001/docs" target="_blank" className="text-blue-400 hover:underline">Swagger UI</a></div>
+            <div className="flex justify-between"><span className="text-zinc-400">API Docs</span><a href="http://localhost:8005/docs" target="_blank" className="text-blue-400 hover:underline">Swagger UI</a></div>
           </div>
         </Card>
         <Card className="p-4 space-y-4">

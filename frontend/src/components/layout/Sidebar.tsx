@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, ArrowLeftRight, History, Settings, Play, Square, Layers } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -15,13 +16,16 @@ const links = [
 
 export function Sidebar() {
   const { copierStatus, version, fetchStatus } = useStore();
+  const [starting, setStarting] = useState(false);
 
   const handleStartStop = async () => {
     if (copierStatus.running) {
       await api.post('/copier/stop');
     } else {
+      setStarting(true);
       const resp = await api.post<{ok: boolean; message: string}>('/copier/start');
       if (!resp.ok) useStore.getState().showToast(resp.message, 'error');
+      setStarting(false);
     }
     fetchStatus();
   };
@@ -54,10 +58,12 @@ export function Sidebar() {
             <p className="text-xs text-zinc-500">{Math.floor(copierStatus.uptime_seconds / 60)}m {Math.floor(copierStatus.uptime_seconds % 60)}s</p>
           ) : null}
         </div>
-        <button onClick={handleStartStop}
+        <button onClick={handleStartStop} disabled={starting}
           className={cn('w-full flex items-center justify-center gap-2 py-3 rounded-md text-base font-semibold transition-colors',
+            starting ? 'bg-emerald-500/10 text-emerald-400 animate-pulse' :
             copierStatus.running ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20')}>
-          {copierStatus.running ? <><Square size={16} /> STOP</> : <><Play size={16} /> RUN</>}
+          {starting ? <><span className="inline-block w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /> ARRANCANDO</> :
+           copierStatus.running ? <><Square size={16} /> STOP</> : <><Play size={16} /> RUN</>}
         </button>
       </div>
     </aside>

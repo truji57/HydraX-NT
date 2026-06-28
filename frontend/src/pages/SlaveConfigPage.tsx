@@ -131,7 +131,7 @@ export default function SlaveConfigPage() {
       {selectedSlave && config && (
         <Card className="p-6 space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-white">Configurando: {selectedSlave.name}</h3>
+            <h3 className="text-sm font-medium text-white">Configurando: <span className="text-2xl font-bold">{selectedSlave.name}</span></h3>
             <Button variant="primary" onClick={saveConfig}>Guardar</Button>
           </div>
 
