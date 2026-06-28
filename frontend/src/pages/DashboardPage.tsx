@@ -173,11 +173,11 @@ export default function DashboardPage() {
                 </div>
               )}
               <div className="mt-3 pt-3 border-t border-zinc-800 flex justify-end">
-                <button onClick={() => setConfirmClose(s)} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors" title="Cerrar todas las posiciones">
+                <Button variant="danger" size="sm" onClick={() => setConfirmClose(s)}>
                   <AlertTriangle size={12} /> Emergency Close
-                </button>
+                </Button>
               </div>
-            </div>
+              </div>
             </Card>
             );
           })}
