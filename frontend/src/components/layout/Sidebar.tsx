@@ -20,7 +20,8 @@ export function Sidebar() {
     if (copierStatus.running) {
       await api.post('/copier/stop');
     } else {
-      await api.post('/copier/start');
+      const resp = await api.post<{ok: boolean; message: string}>('/copier/start');
+      if (!resp.ok) useStore.getState().showToast(resp.message, 'error');
     }
     fetchStatus();
   };

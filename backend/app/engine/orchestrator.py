@@ -87,6 +87,20 @@ class CopierOrchestrator:
                     self._running = False
                     return {"ok": False, "message": "No hay cuentas master activas"}
 
+                from app.engine.nt8_connector import NT8Connector
+                bridges_ok = False
+                failed_bridges = []
+                for master in masters:
+                    conn = NT8Connector(master.bridge_host, master.bridge_port)
+                    if conn.connect():
+                        bridges_ok = True
+                    else:
+                        failed_bridges.append(f"{master.name} ({master.bridge_host}:{master.bridge_port})")
+                    conn.disconnect()
+                if not bridges_ok:
+                    self._running = False
+                    return {"ok": False, "message": f"No se pudo conectar a NT8. Verifica que NT8 este abierto con el bridge. Fallos: {'; '.join(failed_bridges)}"}
+
                 for slave in slaves:
                     config = db.query(SlaveConfig).filter(SlaveConfig.account_id == slave.id).first()
                     if not config:
