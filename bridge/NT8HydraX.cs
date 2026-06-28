@@ -21,11 +21,37 @@ namespace NinjaTrader.NinjaScript.AddOns
         private TcpListener _server;
         private Thread _serverThread;
         private JavaScriptSerializer _json = new JavaScriptSerializer();
+        private int _port = 5555;
 
         private Dictionary<string, string> _posIdMap = new Dictionary<string, string>();
         private Dictionary<string, string> _idToKey = new Dictionary<string, string>();
         private int _posIdCounter = 0;
         private readonly object _posIdLock = new object();
+
+        private void LoadConfig()
+        {
+            try
+            {
+                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "NinjaTrader 8", "hydrax_config.json");
+                if (File.Exists(path))
+                {
+                    string json = File.ReadAllText(path);
+                    var cfg = _json.Deserialize<Dictionary<string, object>>(json);
+                    if (cfg != null && cfg.ContainsKey("port"))
+                        _port = Convert.ToInt32(cfg["port"]);
+                    Log("HydraX: Config loaded, port=" + _port, LogLevel.Information);
+                }
+                else
+                {
+                    Log("HydraX: No config file found, using default port " + _port, LogLevel.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log("HydraX: Config error - " + ex.Message + ", using default port " + _port, LogLevel.Warning);
+            }
+        }
 
         protected override void OnStateChange()
         {
@@ -54,6 +80,7 @@ namespace NinjaTrader.NinjaScript.AddOns
             {
                 try { _server?.Stop(); }
                 catch { }
+                _server = null;
             }
         }
 
@@ -61,13 +88,15 @@ namespace NinjaTrader.NinjaScript.AddOns
         {
             if (_server != null) return;
 
+            LoadConfig();
+
             if (Account.All.Count == 0)
             {
                 Log("HydraX: No accounts found", LogLevel.Warning);
                 return;
             }
 
-            Log("HydraX: " + Account.All.Count() + " accounts on port 5555", LogLevel.Information);
+            Log("HydraX: " + Account.All.Count() + " accounts on port " + _port, LogLevel.Information);
             foreach (var a in Account.All)
             {
                 try
@@ -86,9 +115,9 @@ namespace NinjaTrader.NinjaScript.AddOns
         {
             try
             {
-                _server = new TcpListener(IPAddress.Loopback, 5555);
+                _server = new TcpListener(IPAddress.Loopback, _port);
                 _server.Start();
-                Log("HydraX: TCP ready on :5555", LogLevel.Information);
+                Log("HydraX: TCP ready on :" + _port, LogLevel.Information);
 
                 while (_server != null)
                 {
