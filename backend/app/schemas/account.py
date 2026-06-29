@@ -8,7 +8,7 @@ class AccountBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     role: AccountRole
     login: str = Field(..., min_length=1)
-    password: str
+    password: str = ""
     bridge_host: str = "localhost"
     bridge_port: int = 5555
     poll_interval: float = Field(0.5, ge=0.1)

@@ -21,7 +21,6 @@ export interface AccountForm {
   name: string;
   role: AccountRole;
   login: number;
-  password: string;
   bridge_host: string;
   bridge_port: number;
   poll_interval: number;
