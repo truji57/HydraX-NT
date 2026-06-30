@@ -248,6 +248,8 @@ namespace NinjaTrader.NinjaScript.AddOns
             {
                 double pnl = 0;
                 try { pnl = acc.Get(AccountItem.UnrealizedProfitLoss, Currency.UsDollar); } catch { }
+                double realized = 0;
+                try { realized = acc.Get(AccountItem.GrossRealizedProfitLoss, Currency.UsDollar); } catch { }
                 var data = new Dictionary<string, object>
                 {
                     ["ok"] = true,
@@ -255,6 +257,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                     ["balance"] = acc.Get(AccountItem.CashValue, Currency.UsDollar),
                     ["positions"] = acc.Positions.Count(p => p.Quantity != 0),
                     ["unrealized"] = pnl,
+                    ["realized"] = realized,
                 };
                 return _json.Serialize(data);
             }

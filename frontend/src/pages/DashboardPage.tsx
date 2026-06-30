@@ -20,7 +20,7 @@ export default function DashboardPage() {
     fetchStatus();
     useStore.getState().fetchAccounts();
     api.get<SlaveTemplate[]>('/templates').then(setTemplates).catch(() => {});
-    const interval = setInterval(() => { fetchStatus(); fetchSlaveStats(); }, 5000);
+    const interval = setInterval(() => { fetchStatus(); fetchSlaveStats(); fetchSlaveConfigs(); }, 5000);
     fetchSlaveStats();
     return () => clearInterval(interval);
   }, []);
@@ -29,6 +29,19 @@ export default function DashboardPage() {
     try {
       const resp = await api.get<{ok: boolean; data: Record<string, {unrealized: number; positions: number}>}>('/copier/dashboard');
       if (resp.ok) setSlaveStats(resp.data);
+    } catch {}
+  };
+
+  const fetchSlaveConfigs = async () => {
+    try {
+      const newConfigs: Record<string, SlaveConfig> = {};
+      for (const s of useStore.getState().accounts.filter(a => a.role === 'SLAVE' && a.active)) {
+        try {
+          const cfg = await api.get<SlaveConfig>(`/accounts/slaves/${s.id}/config`);
+          newConfigs[s.id] = cfg;
+        } catch {}
+      }
+      if (Object.keys(newConfigs).length > 0) setSlaveConfigs(prev => ({ ...prev, ...newConfigs }));
     } catch {}
   };
 
@@ -81,7 +94,11 @@ export default function DashboardPage() {
       tp.delay_sec === cfg.delay_sec &&
       tp.magic_number === (cfg.magic_number ?? 0) &&
       tp.copy_modify === cfg.copy_modify &&
-      tp.sync_close === cfg.sync_close
+      tp.sync_close === cfg.sync_close &&
+      tp.daily_loss_enabled === cfg.daily_loss_enabled &&
+      tp.daily_loss_limit === cfg.daily_loss_limit &&
+      tp.daily_profit_enabled === cfg.daily_profit_enabled &&
+      tp.daily_profit_limit === cfg.daily_profit_limit
     );
     return t?.name || null;
   };
@@ -150,7 +167,11 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2">
                       <CardTitle className={`text-base font-semibold text-white ${!autocopy ? 'text-zinc-500' : ''}`}>{s.name}</CardTitle>
                       <Badge variant="warning">SLAVE</Badge>
-                      {!autocopy && <Badge variant="warning" className="!bg-amber-500/15 !text-amber-400 !border-amber-500/30">PAUSADO</Badge>}
+                      {!autocopy && (
+                        slaveConfigs[s.id] && (slaveConfigs[s.id].daily_loss_enabled || slaveConfigs[s.id].daily_profit_enabled)
+                          ? <Badge variant="warning" className="!bg-red-500/15 !text-red-400 !border-red-500/30">PROT</Badge>
+                          : <Badge variant="warning" className="!bg-amber-500/15 !text-amber-400 !border-amber-500/30">PAUSADO</Badge>
+                      )}
                     </div>
                   </CardHeader>
                   <div className={`space-y-1 text-xs ${!autocopy ? 'text-zinc-600' : 'text-zinc-500'}`}>

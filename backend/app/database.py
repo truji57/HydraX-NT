@@ -31,6 +31,7 @@ def init_db():
     _migrate_add_color()
     _migrate_copy_enable()
     _migrate_template_id()
+    _migrate_daily_limits()
     _migrate_slave_templates()
 
 
@@ -115,5 +116,27 @@ def _migrate_slave_templates():
                 logger.info("Migrating: creating slave_templates table")
                 Base.metadata.create_all(bind=engine, tables=[Base.metadata.tables["slave_templates"]])
                 conn.commit()
+    except Exception:
+        pass
+
+
+def _migrate_daily_limits():
+    try:
+        with engine.connect() as conn:
+            for col, table in [
+                ("daily_loss_enabled", "slave_config"), ("daily_loss_limit", "slave_config"),
+                ("daily_profit_enabled", "slave_config"), ("daily_profit_limit", "slave_config"),
+                ("daily_pnl", "slave_config"), ("last_pnl_reset", "slave_config"),
+                ("daily_loss_enabled", "slave_templates"), ("daily_loss_limit", "slave_templates"),
+                ("daily_profit_enabled", "slave_templates"), ("daily_profit_limit", "slave_templates"),
+            ]:
+                result = conn.exec_driver_sql(f"SELECT name FROM pragma_table_info('{table}') WHERE name='{col}'").fetchone()
+                if not result:
+                    from app.utils.logger import get_logger
+                    log = get_logger("hydrax.db")
+                    log.info(f"Migrating: adding {table}.{col}")
+                    dt = "BOOLEAN DEFAULT 0" if "enabled" in col else "FLOAT DEFAULT 0.0"
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {dt}")
+                    conn.commit()
     except Exception:
         pass

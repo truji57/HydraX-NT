@@ -319,7 +319,10 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                        fixed_contracts: int, lot_multiplier: float, max_contracts: int,
                        max_positions: int, autocopy_enable: bool, copy_sl: bool,
                        copy_tp: bool, inverse_copy: bool, copy_modify: bool,
-                       sync_close: bool, delay_sec: float,
+                       sync_close: bool,
+                       daily_loss_enabled: bool, daily_loss_limit: float,
+                       daily_profit_enabled: bool, daily_profit_limit: float,
+                       delay_sec: float,
                        magic_number: int, queue: mp.Queue, stop_flag: mp.Event,
                        event_queue: mp.Queue):
     display = name or f"nt8-slave"
@@ -340,6 +343,8 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         "copy_tp": copy_tp, "inverse_copy": inverse_copy,
         "copy_modify": copy_modify,
         "sync_close": sync_close,
+        "daily_loss_enabled": daily_loss_enabled, "daily_loss_limit": daily_loss_limit,
+        "daily_profit_enabled": daily_profit_enabled, "daily_profit_limit": daily_profit_limit,
         "delay_sec": delay_sec, "magic_number": magic_number,
     }
 
@@ -356,6 +361,51 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         if not sl_price or tick_size <= 0:
             return 0
         return max(1, int(abs(entry_price - sl_price) / tick_size))
+
+    def _check_daily_limits():
+        if not _config["daily_loss_enabled"] and not _config["daily_profit_enabled"]:
+            return None
+        try:
+            info = conn.get_account(login)
+            if not info or not info.get("ok"):
+                return None
+            realized = float(info.get("realized", 0))
+            unrealized = float(info.get("unrealized", 0))
+            day_pnl = realized + unrealized
+            logger.info(f"{display}: limits check loss_enabled={_config['daily_loss_enabled']} loss={_config['daily_loss_limit']} profit_enabled={_config['daily_profit_enabled']} profit={_config['daily_profit_limit']} day_pnl={day_pnl:.2f}")
+            if _config["daily_loss_enabled"] and day_pnl <= -abs(_config["daily_loss_limit"]):
+                return ("loss", day_pnl)
+            if _config["daily_profit_enabled"] and day_pnl >= abs(_config["daily_profit_limit"]):
+                return ("profit", day_pnl)
+        except Exception:
+            pass
+        return None
+
+    def _pause_slave(reason: str):
+        logger.warning(f"{display}: limit hit, closing positions first: {reason}")
+        try:
+            positions = conn.get_positions(login)
+            for p in positions:
+                pid = p.get("id")
+                symbol = p.get("symbol", "")
+                if pid:
+                    conn.close_position(str(pid), symbol, account=login)
+                    logger.warning(f"{display}: limit-closed {symbol}")
+        except Exception as e:
+            logger.error(f"{display}: error closing positions on limit: {e}")
+
+        try:
+            db_pause = SessionLocal()
+            sc = db_pause.query(SlaveConfig).filter(SlaveConfig.account_id == account_id).first()
+            if sc:
+                sc.autocopy_enable = False
+                db_pause.commit()
+            db_pause.close()
+            _config["autocopy_enable"] = False
+            logger.warning(f"{display}: paused (limit hit): {reason}")
+            _emit_event(event_queue, "worker_error", {"worker": display, "error": f"PAUSADO por limite: {reason}"})
+        except Exception:
+            pass
 
     def reload_config():
         try:
@@ -376,6 +426,10 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 _config["inverse_copy"] = cfg.inverse_copy or False
                 _config["copy_modify"] = cfg.copy_modify if cfg.copy_modify is not None else True
                 _config["sync_close"] = cfg.sync_close if cfg.sync_close is not None else False
+                _config["daily_loss_enabled"] = cfg.daily_loss_enabled or False
+                _config["daily_loss_limit"] = cfg.daily_loss_limit or 0.0
+                _config["daily_profit_enabled"] = cfg.daily_profit_enabled or False
+                _config["daily_profit_limit"] = cfg.daily_profit_limit or 0.0
                 _config["delay_sec"] = cfg.delay_sec or 0.0
                 _config["magic_number"] = cfg.magic_number or 0
         except Exception:
@@ -395,6 +449,11 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             if idle_cycles >= 4:
                 idle_cycles = 0
                 reload_config()
+                if _config["autocopy_enable"]:
+                    limit_hit = _check_daily_limits()
+                    if limit_hit:
+                        limit_type, pnl_value = limit_hit
+                        _pause_slave(f"{limit_type} diario alcanzado: ${pnl_value:.2f}")
             continue
         if stop_flag.is_set():
             break
@@ -476,6 +535,12 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
 
             if _config["max_contracts"] > 0 and contracts > _config["max_contracts"]:
                 contracts = _config["max_contracts"]
+
+            limit_hit = _check_daily_limits()
+            if limit_hit:
+                limit_type, pnl_value = limit_hit
+                _pause_slave(f"{limit_type} diario alcanzado: ${pnl_value:.2f}")
+                continue
 
             logger.info(f"{display}: OPEN {symbol} {direction} x{contracts} (mode={_config['risk_mode']}) sl={sl} tp={tp}")
             result = conn.open_position(symbol, contracts, direction, sl, tp, _config["magic_number"], account=login)

@@ -49,6 +49,10 @@ def update_template(template_id: str, data: SlaveTemplateUpdate, db: Session = D
         sc.inverse_copy = t.inverse_copy
         sc.copy_modify = t.copy_modify
         sc.sync_close = t.sync_close
+        sc.daily_loss_enabled = t.daily_loss_enabled
+        sc.daily_loss_limit = t.daily_loss_limit
+        sc.daily_profit_enabled = t.daily_profit_enabled
+        sc.daily_profit_limit = t.daily_profit_limit
         sc.delay_sec = t.delay_sec
         sc.magic_number = t.magic_number
 

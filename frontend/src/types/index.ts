@@ -44,6 +44,10 @@ export interface SlaveConfig {
   inverse_copy: boolean;
   copy_modify: boolean;
   sync_close: boolean;
+  daily_loss_enabled: boolean;
+  daily_loss_limit: number;
+  daily_profit_enabled: boolean;
+  daily_profit_limit: number;
   template_id: string | null;
   delay_sec: number;
   magic_number: number;
@@ -87,6 +91,10 @@ export interface SlaveTemplate {
   inverse_copy: boolean;
   copy_modify: boolean;
   sync_close: boolean;
+  daily_loss_enabled: boolean;
+  daily_loss_limit: number;
+  daily_profit_enabled: boolean;
+  daily_profit_limit: number;
   delay_sec: number;
   magic_number: number;
   created_at: string;

@@ -65,6 +65,10 @@ class SlaveConfigBase(BaseModel):
     inverse_copy: bool = False
     copy_modify: bool = True
     sync_close: bool = False
+    daily_loss_enabled: bool = False
+    daily_loss_limit: float = 0.0
+    daily_profit_enabled: bool = False
+    daily_profit_limit: float = 0.0
     template_id: Optional[str] = None
     delay_sec: float = 0.0
     magic_number: int = 0
@@ -106,6 +110,10 @@ class SlaveTemplateBase(BaseModel):
     inverse_copy: bool = False
     copy_modify: bool = True
     sync_close: bool = False
+    daily_loss_enabled: bool = False
+    daily_loss_limit: float = 0.0
+    daily_profit_enabled: bool = False
+    daily_profit_limit: float = 0.0
     delay_sec: float = 0.0
     magic_number: int = 0
 
@@ -129,6 +137,10 @@ class SlaveTemplateUpdate(BaseModel):
     inverse_copy: Optional[bool] = None
     copy_modify: Optional[bool] = None
     sync_close: Optional[bool] = None
+    daily_loss_enabled: Optional[bool] = None
+    daily_loss_limit: Optional[float] = None
+    daily_profit_enabled: Optional[bool] = None
+    daily_profit_limit: Optional[float] = None
     delay_sec: Optional[float] = None
     magic_number: Optional[int] = None
 
