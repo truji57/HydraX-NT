@@ -136,7 +136,7 @@ def _migrate_daily_limits():
                     from app.utils.logger import get_logger
                     log = get_logger("hydrax.db")
                     log.info(f"Migrating: adding {table}.{col}")
-                    dt = "BOOLEAN DEFAULT 0" if "enabled" in col else "FLOAT DEFAULT 0.0"
+                    dt = "BOOLEAN DEFAULT 0" if ("enabled" in col or col == "paused_by_limit") else "FLOAT DEFAULT 0.0"
                     conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {dt}")
                     conn.commit()
     except Exception:
