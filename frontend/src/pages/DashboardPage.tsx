@@ -14,7 +14,7 @@ export default function DashboardPage() {
   const [closing, setClosing] = useState(false);
   const [slaveConfigs, setSlaveConfigs] = useState<Record<string, SlaveConfig>>({});
   const [templates, setTemplates] = useState<SlaveTemplate[]>([]);
-  const [slaveStats, setSlaveStats] = useState<Record<string, {unrealized: number; positions: number}>>({});
+  const [slaveStats, setSlaveStats] = useState<Record<string, {unrealized: number; positions: number; balance: number; day_pnl: number}>>({});
 
   useEffect(() => {
     fetchStatus();
@@ -138,6 +138,14 @@ export default function DashboardPage() {
                 <Switch checked={m.copy_enable !== false} onChange={(v) => toggleMasterCopy(m, v)} />
               </div>
               {slaveStats[m.id] && (
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  <span className="text-white font-medium">${slaveStats[m.id].balance.toFixed(0)}</span>
+                  <span className="text-zinc-500 ml-1">
+                    ({slaveStats[m.id].day_pnl >= 0 ? '+' : ''}{slaveStats[m.id].day_pnl.toFixed(2)})
+                  </span>
+                </p>
+              )}
+              {slaveStats[m.id] && (
                 <p className="text-xs text-zinc-400">
                   <span className={slaveStats[m.id].unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                     {slaveStats[m.id].unrealized >= 0 ? '+' : ''}{slaveStats[m.id].unrealized.toFixed(2)} USD
@@ -176,6 +184,14 @@ export default function DashboardPage() {
                   </CardHeader>
                   <div className={`space-y-1 text-xs ${!autocopy ? 'text-zinc-600' : 'text-zinc-500'}`}>
                     <p>Cuenta: {s.login || '—'}</p>
+                    {slaveStats[s.id] && (
+                      <p className={!autocopy ? 'text-zinc-600' : 'text-zinc-300'}>
+                        <span className={!autocopy ? '' : 'text-white font-medium'}>${slaveStats[s.id].balance.toFixed(0)}</span>
+                        <span className="text-zinc-500 ml-1">
+                          ({slaveStats[s.id].day_pnl >= 0 ? '+' : ''}{slaveStats[s.id].day_pnl.toFixed(2)})
+                        </span>
+                      </p>
+                    )}
                     {slaveStats[s.id] && (
                       <p className={!autocopy ? 'text-zinc-600' : 'text-zinc-300'}>
                         <span className={slaveStats[s.id].unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}>

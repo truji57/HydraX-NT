@@ -94,15 +94,19 @@ def dashboard_stats():
                 conn = NT8Connector(acc.bridge_host, acc.bridge_port)
                 info = conn.get_account(acc.login)
                 if info and info.get("ok"):
+                    realized = info.get("realized", 0)
+                    unrealized = info.get("unrealized", 0)
                     result[acc.id] = {
-                        "unrealized": info.get("unrealized", 0),
+                        "unrealized": unrealized,
                         "positions": info.get("positions", 0),
+                        "balance": info.get("balance", 0),
+                        "day_pnl": realized + unrealized,
                     }
                 else:
-                    result[acc.id] = {"unrealized": 0, "positions": 0}
+                    result[acc.id] = {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0}
                 conn.disconnect()
             except Exception:
-                result[acc.id] = {"unrealized": 0, "positions": 0}
+                result[acc.id] = {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0}
         return {"ok": True, "data": result}
     finally:
         db.close()
