@@ -87,6 +87,8 @@ def update_slave_config(db: Session, account_id: str, data: SlaveConfigUpdate) -
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(config, key, value)
+    if update_data.get("autocopy_enable"):
+        config.paused_by_limit = False
     db.commit()
     db.refresh(config)
     return config

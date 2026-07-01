@@ -129,6 +129,7 @@ def _migrate_daily_limits():
                 ("daily_pnl", "slave_config"), ("last_pnl_reset", "slave_config"),
                 ("daily_loss_enabled", "slave_templates"), ("daily_loss_limit", "slave_templates"),
                 ("daily_profit_enabled", "slave_templates"), ("daily_profit_limit", "slave_templates"),
+                ("paused_by_limit", "slave_config"),
             ]:
                 result = conn.exec_driver_sql(f"SELECT name FROM pragma_table_info('{table}') WHERE name='{col}'").fetchone()
                 if not result:

@@ -87,6 +87,7 @@ class SlaveConfig(Base):
     daily_profit_limit = Column(Float, default=0.0)
     daily_pnl = Column(Float, default=0.0)
     last_pnl_reset = Column(DateTime, nullable=True)
+    paused_by_limit = Column(Boolean, default=False)
     delay_sec = Column(Float, default=0.0)
     magic_number = Column(Integer, default=0)
 

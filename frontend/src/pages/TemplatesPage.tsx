@@ -101,15 +101,19 @@ export default function TemplatesPage() {
             <h3 className="text-sm font-medium text-white">Nueva Plantilla</h3>
             <Button variant="ghost" size="sm" onClick={resetForm}><X size={14} /></Button>
           </div>
+          <div><Label>Nombre</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><Label>Nombre</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
             <div><Label>Modo de Riesgo</Label><Select value={form.risk_mode} onChange={e => setForm({...form, risk_mode: e.target.value as SlaveTemplate['risk_mode']})}>
               <option value="FIXED">Contratos Fijos</option>
               <option value="RISK_PERCENT">% Riesgo</option>
               <option value="RISK_USD">Riesgo USD</option>
               <option value="RATIO">Multiplicador</option>
               <option value="BALANCE_PROP">Prop. Balance</option>
-            </Select></div>
+            </Select>
+            {(form.risk_mode === 'RISK_USD' || form.risk_mode === 'RISK_PERCENT') && (
+              <p className="text-xs text-amber-400 mt-1">Modo de riesgo dependiente de SL. Si el master abre sin SL, se usara <span className="font-medium">Proporcional al Balance</span> como modo por defecto.</p>
+            )}
+            </div>
             {form.risk_mode === 'FIXED' && <div><Label>Contratos Fijos</Label><Input type="number" value={form.fixed_contracts} onChange={e => setForm({...form, fixed_contracts: Number(e.target.value)})} /></div>}
             {form.risk_mode === 'RISK_PERCENT' && <div><Label>% Riesgo</Label><DecimalInput value={form.risk_percent} onChange={v => setForm({...form, risk_percent: v})} /></div>}
             {form.risk_mode === 'RISK_USD' && <div><Label>Riesgo USD</Label><DecimalInput value={form.risk_usd} onChange={v => setForm({...form, risk_usd: v})} /></div>}
@@ -165,15 +169,19 @@ export default function TemplatesPage() {
                   <h3 className="text-sm font-medium text-white">Editar {t.name}</h3>
                   <Button variant="ghost" size="sm" onClick={resetForm}><X size={14} /></Button>
                 </div>
+                <div><Label>Nombre</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div><Label>Nombre</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
                   <div><Label>Modo de Riesgo</Label><Select value={form.risk_mode} onChange={e => setForm({...form, risk_mode: e.target.value as SlaveTemplate['risk_mode']})}>
                     <option value="FIXED">Contratos Fijos</option>
                     <option value="RISK_PERCENT">% Riesgo</option>
                     <option value="RISK_USD">Riesgo USD</option>
                     <option value="RATIO">Multiplicador</option>
                     <option value="BALANCE_PROP">Prop. Balance</option>
-                  </Select></div>
+                  </Select>
+                  {(form.risk_mode === 'RISK_USD' || form.risk_mode === 'RISK_PERCENT') && (
+                    <p className="text-xs text-amber-400 mt-1">Modo de riesgo dependiente de SL. Si el master abre sin SL, se usara <span className="font-medium">Proporcional al Balance</span> como modo por defecto.</p>
+                  )}
+                  </div>
                   {form.risk_mode === 'FIXED' && <div><Label>Contratos Fijos</Label><Input type="number" value={form.fixed_contracts} onChange={e => setForm({...form, fixed_contracts: Number(e.target.value)})} /></div>}
                   {form.risk_mode === 'RISK_PERCENT' && <div><Label>% Riesgo</Label><DecimalInput value={form.risk_percent} onChange={v => setForm({...form, risk_percent: v})} /></div>}
                   {form.risk_mode === 'RISK_USD' && <div><Label>Riesgo USD</Label><DecimalInput value={form.risk_usd} onChange={v => setForm({...form, risk_usd: v})} /></div>}

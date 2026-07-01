@@ -55,9 +55,9 @@ export default function SlaveConfigPage() {
           t.sync_close === cfg.sync_close &&
           t.daily_loss_enabled === cfg.daily_loss_enabled &&
           t.daily_loss_limit === cfg.daily_loss_limit &&
-          t.daily_profit_enabled === cfg.daily_profit_enabled &&
-          t.daily_profit_limit === cfg.daily_profit_limit
-        );
+        t.daily_profit_enabled === cfg.daily_profit_enabled &&
+        t.daily_profit_limit === cfg.daily_profit_limit
+      );
         setActiveTemplateId(match?.id || '');
       }
     } catch { showToast('Error cargando config', 'error'); }
@@ -179,6 +179,9 @@ export default function SlaveConfigPage() {
                       <option value="RATIO">Multiplicador del Master</option>
                       <option value="BALANCE_PROP">Proporcional al Balance</option>
                     </Select>
+                    {(config.risk_mode === 'RISK_USD' || config.risk_mode === 'RISK_PERCENT') && (
+                      <p className="text-xs text-amber-400 mt-1">Modo de riesgo dependiente de SL. Si el master abre sin SL, se usara <span className="font-medium">Proporcional al Balance</span> como modo por defecto.</p>
+                    )}
                   </div>
 
                   {showRiskHelp && (
@@ -202,7 +205,6 @@ export default function SlaveConfigPage() {
                   <div><Label>Delay (seg)</Label><DecimalInput value={config.delay_sec} onChange={v => updateConfig({delay_sec: v})} /></div>
                   <div><Label>Magic Number</Label><Input type="number" value={config.magic_number ?? 0} onChange={e => updateConfig({magic_number: Number(e.target.value)})} /></div>
                 </div>
-
                 <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-700 bg-zinc-800/30">
                   <div>
                     <p className="text-sm font-medium text-white">AutoCopy</p>

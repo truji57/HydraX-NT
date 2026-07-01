@@ -399,11 +399,49 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             sc = db_pause.query(SlaveConfig).filter(SlaveConfig.account_id == account_id).first()
             if sc:
                 sc.autocopy_enable = False
+                sc.paused_by_limit = True
                 db_pause.commit()
             db_pause.close()
             _config["autocopy_enable"] = False
             logger.warning(f"{display}: paused (limit hit): {reason}")
             _emit_event(event_queue, "worker_error", {"worker": display, "error": f"PAUSADO por limite: {reason}"})
+        except Exception:
+            pass
+
+    def _cleanup_orphan_orders():
+        try:
+            positions = conn.get_positions(login)
+            orders = conn.get_orders(login)
+            sltp_orders = [o for o in orders if o.get("type") in ("STOP", "LIMIT")]
+            if not positions and sltp_orders:
+                logger.warning(f"{display}: {len(sltp_orders)} orphan SL/TP orders found, cancelling")
+                for o in sltp_orders:
+                    symbol = o.get("symbol", "")
+                    conn.modify_position(symbol, 0, 0, _config["magic_number"], account=login)
+                logger.info(f"{display}: orphan orders cleaned")
+        except Exception:
+            pass
+
+    def _reset_daily_if_new_day():
+        try:
+            db_r = SessionLocal()
+            sc = db_r.query(SlaveConfig).filter(SlaveConfig.account_id == account_id).first()
+            if not sc:
+                db_r.close()
+                return
+            today = datetime.utcnow().date()
+            last = sc.last_pnl_reset.date() if sc.last_pnl_reset else None
+            if last != today:
+                sc.daily_pnl = 0.0
+                sc.last_pnl_reset = datetime.utcnow()
+                if sc.paused_by_limit:
+                    sc.autocopy_enable = True
+                    sc.paused_by_limit = False
+                    _config["autocopy_enable"] = True
+                    logger.info(f"{display}: daily limit reset + reactivated for new day")
+                    _emit_event(event_queue, "copy_ok", {"slave": display, "action": "RESET", "info": "Reactivado por nuevo dia"})
+                db_r.commit()
+                db_r.close()
         except Exception:
             pass
 
@@ -449,11 +487,13 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             if idle_cycles >= 4:
                 idle_cycles = 0
                 reload_config()
+                _reset_daily_if_new_day()
                 if _config["autocopy_enable"]:
                     limit_hit = _check_daily_limits()
                     if limit_hit:
                         limit_type, pnl_value = limit_hit
                         _pause_slave(f"{limit_type} diario alcanzado: ${pnl_value:.2f}")
+                _cleanup_orphan_orders()
             continue
         if stop_flag.is_set():
             break
@@ -513,8 +553,10 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                     contracts = calculate_contracts_risk_percent(balance, _config["risk_percent"], sl_ticks, tick_value)
                     logger.info(f"{display}: RISK_PERCENT balance={balance} risk%={_config['risk_percent']} ticks={sl_ticks} tick_val={tick_value} -> {contracts}c")
                 else:
-                    contracts = calculate_contracts_fixed(_config["fixed_contracts"])
-                    logger.info(f"{display}: RISK_PERCENT sin SL, usando fixed_contracts={contracts}")
+                    slave_balance = _get_account_balance(conn, login)
+                    master_balance = payload.get("master_balance", 0)
+                    contracts = calculate_contracts_balance_prop(payload.get("contracts", 1), slave_balance, master_balance)
+                    logger.info(f"{display}: RISK_PERCENT sin SL, usando BALANCE_PROP slave={slave_balance} master={master_balance} -> {contracts}c")
             elif _config["risk_mode"] == "RISK_USD":
                 if sl and payload.get("tick_size"):
                     tick_size = payload.get("tick_size", 0.25)
@@ -523,8 +565,10 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                     contracts = calculate_contracts_risk_usd(_config["risk_usd"], sl_ticks, tick_value)
                     logger.info(f"{display}: RISK_USD risk={_config['risk_usd']} price={payload.get('price', 0)} sl={sl} ticks={sl_ticks} tick_val={tick_value} -> {contracts}c")
                 else:
-                    contracts = calculate_contracts_fixed(_config["fixed_contracts"])
-                    logger.info(f"{display}: RISK_USD sin SL, usando fixed_contracts={contracts}")
+                    slave_balance = _get_account_balance(conn, login)
+                    master_balance = payload.get("master_balance", 0)
+                    contracts = calculate_contracts_balance_prop(payload.get("contracts", 1), slave_balance, master_balance)
+                    logger.info(f"{display}: RISK_USD sin SL, usando BALANCE_PROP slave={slave_balance} master={master_balance} -> {contracts}c")
             elif _config["risk_mode"] == "BALANCE_PROP":
                 slave_balance = _get_account_balance(conn, login)
                 master_balance = payload.get("master_balance", 0)
