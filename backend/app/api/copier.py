@@ -110,3 +110,43 @@ def dashboard_stats():
         return {"ok": True, "data": result}
     finally:
         db.close()
+
+
+@router.post("/emergency-close-all")
+def emergency_close_all(db: Session = Depends(get_db)):
+    from app.models.account import Account
+    from app.engine.nt8_connector import NT8Connector
+
+    slaves = db.query(Account).filter(Account.role == "SLAVE", Account.active == True).all()
+    total_closed = 0
+    total_errors = 0
+
+    for slave in slaves:
+        try:
+            conn = NT8Connector(slave.bridge_host, slave.bridge_port)
+            positions = conn.get_positions(slave.login)
+            orders = conn.get_orders(slave.login)
+
+            for o in orders:
+                if o.get("type") in ("STOP", "LIMIT"):
+                    conn.modify_position(o.get("symbol", ""), 0, 0, 0, account=slave.login)
+
+            for p in positions:
+                pid = p.get("id", "")
+                if pid:
+                    result = conn.close_position(str(pid), p.get("symbol", ""), account=slave.login)
+                    if result and result.get("ok"):
+                        total_closed += 1
+                        db.query(TicketMap).filter(
+                            TicketMap.slave_account_id == slave.id,
+                            TicketMap.status == TicketStatus.OPEN,
+                        ).update({TicketMap.status: TicketStatus.CLOSED})
+                    else:
+                        total_errors += 1
+
+            conn.disconnect()
+        except Exception:
+            total_errors += 1
+
+    db.commit()
+    return {"ok": True, "closed": total_closed, "errors": total_errors, "slaves": len(slaves)}

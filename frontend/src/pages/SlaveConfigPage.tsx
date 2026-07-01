@@ -9,7 +9,7 @@ import type { Account, SlaveConfig, SlaveTemplate } from '../types';
 import { HelpCircle } from 'lucide-react';
 
 export default function SlaveConfigPage() {
-  const { accounts, fetchAccounts, showToast } = useStore();
+  const { accounts, copierStatus, fetchAccounts, showToast } = useStore();
   const [selectedSlave, setSelectedSlave] = useState<Account | null>(null);
   const [config, setConfig] = useState<SlaveConfig | null>(null);
   const [linkedMasters, setLinkedMasters] = useState<string[]>([]);
@@ -143,7 +143,7 @@ export default function SlaveConfigPage() {
               <Card className="mt-2 p-6 space-y-6 col-span-full border-emerald-500/30">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium text-white">Configurando: <span className="text-2xl font-bold">{selectedSlave.name}</span></h3>
-                  <Button variant="primary" onClick={saveConfig}>Guardar</Button>
+                  <Button variant="primary" onClick={saveConfig} disabled={copierStatus.running} title={copierStatus.running ? 'Para el copiador para modificar' : ''}>Guardar</Button>
                 </div>
 
                 <div>

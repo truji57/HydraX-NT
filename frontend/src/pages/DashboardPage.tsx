@@ -12,6 +12,8 @@ export default function DashboardPage() {
   const { copierStatus, accounts, fetchStatus, logs } = useStore();
   const [confirmClose, setConfirmClose] = useState<Account | null>(null);
   const [closing, setClosing] = useState(false);
+  const [confirmCloseAll, setConfirmCloseAll] = useState(false);
+  const [closingAll, setClosingAll] = useState(false);
   const [slaveConfigs, setSlaveConfigs] = useState<Record<string, SlaveConfig>>({});
   const [templates, setTemplates] = useState<SlaveTemplate[]>([]);
   const [slaveStats, setSlaveStats] = useState<Record<string, {unrealized: number; positions: number; balance: number; day_pnl: number}>>({});
@@ -115,6 +117,17 @@ export default function DashboardPage() {
     setClosing(false); setConfirmClose(null);
   };
 
+  const handleEmergencyCloseAll = async () => {
+    setClosingAll(true);
+    try {
+      const resp = await api.post<{ok:boolean;closed:number;errors:number;slaves:number}>('/copier/emergency-close-all');
+      if (resp.ok) useStore.getState().showToast(`Cerradas ${resp.closed} posiciones en ${resp.slaves} slaves (${resp.errors} errores)`, 'ok');
+      else useStore.getState().showToast('Error', 'error');
+      fetchStatus();
+    } catch (e: unknown) { useStore.getState().showToast(e instanceof Error ? e.message : 'Error', 'error'); }
+    setClosingAll(false); setConfirmCloseAll(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-8">
@@ -160,7 +173,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Slave <span className="text-amber-400">({slaves.length})</span></h3>
+      <div><div className="text-base font-medium text-zinc-400 mb-3 flex items-center justify-between"><span>Cuentas Slave <span className="text-amber-400">({slaves.length})</span></span>
+            {slaves.length > 0 && (
+              <Button variant="danger" size="sm" onClick={() => setConfirmCloseAll(true)}>
+                <AlertTriangle size={12} /> Cerrar Todo
+              </Button>
+            )}
+          </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {slaves.length === 0 && <p className="text-sm text-zinc-600 col-span-full">No hay cuentas slave configuradas.</p>}
           {slaves.map(s => {
@@ -269,6 +288,17 @@ export default function DashboardPage() {
             <p className="text-sm font-medium text-white mb-1">{confirmClose.name}</p>
             <p className="text-xs text-red-400 mb-4">Esta accion no se puede deshacer.</p>
             <div className="flex gap-2 justify-end"><Button variant="ghost" size="sm" onClick={() => setConfirmClose(null)}>Cancelar</Button><Button variant="danger" size="sm" onClick={handleEmergencyClose} disabled={closing}>{closing ? 'Cerrando...' : 'Cerrar Todo'}</Button></div>
+          </Card>
+        </div>
+      )}
+      {confirmCloseAll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <Card className="w-[420px] p-6">
+            <div className="flex items-center justify-between mb-4"><h3 className="text-lg font-bold text-red-400 flex items-center gap-2"><AlertTriangle size={20} /> Cierre de Emergencia General</h3><button onClick={() => setConfirmCloseAll(false)} className="text-zinc-500 hover:text-white"><X size={18} /></button></div>
+            <p className="text-sm text-zinc-400 mb-2">Vas a cerrar <b className="text-white">TODAS</b> las posiciones y cancelar ordenes pendientes en:</p>
+            <p className="text-sm font-medium text-white mb-1">TODOS los slaves activos ({slaves.length} cuentas)</p>
+            <p className="text-xs text-red-400 mb-4">Esta accion no se puede deshacer.</p>
+            <div className="flex gap-2 justify-end"><Button variant="ghost" size="sm" onClick={() => setConfirmCloseAll(false)}>Cancelar</Button><Button variant="danger" size="sm" onClick={handleEmergencyCloseAll} disabled={closingAll}>{closingAll ? 'Cerrando...' : 'Cerrar Todo'}</Button></div>
           </Card>
         </div>
       )}
