@@ -139,5 +139,9 @@ def _migrate_daily_limits():
                     dt = "BOOLEAN DEFAULT 0" if ("enabled" in col or col == "paused_by_limit") else "FLOAT DEFAULT 0.0"
                     conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {dt}")
                     conn.commit()
+            c2 = conn.exec_driver_sql("SELECT last_pnl_reset FROM slave_config WHERE last_pnl_reset IS NOT NULL AND typeof(last_pnl_reset) != 'text'").fetchone()
+            if c2:
+                conn.exec_driver_sql("UPDATE slave_config SET last_pnl_reset = NULL WHERE typeof(last_pnl_reset) != 'text'")
+                conn.commit()
     except Exception:
         pass
