@@ -143,3 +143,13 @@ async def backup_import(file: UploadFile = File(...), db: Session = Depends(get_
     except Exception as e:
         db.rollback()
         return {"ok": False, "error": str(e)}
+
+
+@router.get("/changelog")
+def changelog():
+    import json
+    from pathlib import Path
+    path = Path(__file__).resolve().parent.parent.parent / "changelog.json"
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))

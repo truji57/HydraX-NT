@@ -1,0 +1,92 @@
+[
+    {
+        "date":  "2026-07-02",
+        "description":  "Changelog de versiones en Ajustes + /commit actualiza changelog automaticamente",
+        "version":  "v1.33"
+    },
+    {
+        "version":  "v1.32",
+        "date":  "2026-07-02",
+        "description":  "Fix plantilla no visible al pausar slave + cierre de formulario al guardar + log de contratos mejorado"
+    },
+    {
+        "version":  "v1.31",
+        "date":  "2026-07-02",
+        "description":  "Flatten All: boton Cerrar Todo para cerrar posiciones de todos los slaves a la vez"
+    },
+    {
+        "version":  "v1.30",
+        "date":  "2026-07-02",
+        "description":  "Balance y P\u0026L diario en tarjetas del Dashboard"
+    },
+    {
+        "version":  "v1.29",
+        "date":  "2026-07-01",
+        "description":  "Fix migracion last_pnl_reset automatico para nuevos usuarios"
+    },
+    {
+        "version":  "v1.28",
+        "date":  "2026-07-01",
+        "description":  "Fix migracion paused_by_limit + label ambar en plantillas + limpieza huerfanas + BALANCE_PROP fallback"
+    },
+    {
+        "version":  "v1.27",
+        "date":  "2026-07-01",
+        "description":  "Limites diarios Prop Firm con cierre automatico y reset diario + badge PROT"
+    },
+    {
+        "version":  "v1.26",
+        "date":  "2026-07-01",
+        "description":  "Limites diarios Prop Firm: cierre automatico + badge PROT + auto-refresh config + formulario inline"
+    },
+    {
+        "version":  "v1.25",
+        "date":  "2026-07-01",
+        "description":  "Eliminado campo password innecesario de formularios de cuentas"
+    },
+    {
+        "version":  "v1.24",
+        "date":  "2026-06-28",
+        "description":  "Puerto del bridge configurable via hydrax_config.json + setup.bat para nuevos usuarios"
+    },
+    {
+        "version":  "v1.23",
+        "date":  "2026-06-28",
+        "description":  "OCO SL/TP en bridge + deteccion TP/SL por memoria + pausa/reanudar sin reinicio"
+    },
+    {
+        "version":  "v1.22",
+        "date":  "2026-06-28",
+        "description":  "UI responsiva para movil: sidebar colapsable + grids adaptables"
+    },
+    {
+        "version":  "v1.21",
+        "date":  "2026-06-28",
+        "description":  "Formularios inline cuentas + boton ARRANCANDO + cierre solo manual + revert cleanup"
+    },
+    {
+        "version":  "v1.20",
+        "date":  "2026-06-27",
+        "description":  "Migracion template_id faltante en VPS"
+    },
+    {
+        "version":  "v1.19",
+        "date":  "2026-06-27",
+        "description":  "Modal eliminacion cuenta + fix cascade delete DB"
+    },
+    {
+        "version":  "v1.18",
+        "date":  "2026-06-27",
+        "description":  "Verificacion de bridge al iniciar + toast de error en RUN"
+    },
+    {
+        "version":  "v1.17",
+        "date":  "2026-06-27",
+        "description":  "Badge RUNNING/STOPPED mas grande + update.bat fix"
+    },
+    {
+        "version":  "v1.16",
+        "date":  "2026-06-27",
+        "description":  "Worker error events + update.bat lock fix"
+    }
+]

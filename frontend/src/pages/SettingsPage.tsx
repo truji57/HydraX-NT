@@ -1,13 +1,27 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useStore } from '../store';
 import { Download, Upload } from 'lucide-react';
 
+interface ChangelogEntry {
+  version: string;
+  date: string;
+  description: string;
+}
+
 export default function SettingsPage() {
   const { copierStatus, version, showToast } = useStore();
   const [importing, setImporting] = useState(false);
+  const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch('/api/system/changelog')
+      .then(r => r.json())
+      .then(setChangelog)
+      .catch(() => {});
+  }, []);
 
   const handleExport = async () => {
     try {
@@ -65,6 +79,20 @@ export default function SettingsPage() {
           </div>
         </Card>
       </div>
+      {changelog.length > 0 && (
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-white mb-3">Historial de Versiones</h3>
+          <div className="space-y-2 text-xs max-h-96 overflow-auto">
+            {changelog.map((entry, i) => (
+              <div key={i} className="flex items-start gap-3 py-1.5 px-1 hover:bg-zinc-800/30 rounded">
+                <span className="text-emerald-400 font-medium shrink-0 w-14">{entry.version}</span>
+                <span className="text-zinc-600 shrink-0 w-20">{entry.date}</span>
+                <span className="text-zinc-400">{entry.description}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
