@@ -92,7 +92,6 @@ export default function DashboardPage() {
       tp.lot_multiplier === cfg.lot_multiplier &&
       tp.max_contracts === cfg.max_contracts &&
       tp.max_positions === cfg.max_positions &&
-      tp.autocopy_enable === cfg.autocopy_enable &&
       tp.delay_sec === cfg.delay_sec &&
       tp.magic_number === (cfg.magic_number ?? 0) &&
       tp.copy_modify === cfg.copy_modify &&

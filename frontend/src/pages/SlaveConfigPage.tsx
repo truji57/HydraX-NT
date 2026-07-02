@@ -48,7 +48,6 @@ export default function SlaveConfigPage() {
           t.lot_multiplier === cfg.lot_multiplier &&
           t.max_contracts === cfg.max_contracts &&
           t.max_positions === cfg.max_positions &&
-          t.autocopy_enable === cfg.autocopy_enable &&
           t.delay_sec === cfg.delay_sec &&
           t.magic_number === (cfg.magic_number ?? 0) &&
           t.copy_modify === cfg.copy_modify &&
@@ -70,6 +69,8 @@ export default function SlaveConfigPage() {
       await api.put(`/accounts/slaves/${selectedSlave.id}/masters`, { master_ids: linkedMasters });
       fetchAccounts();
       showToast('Guardado', 'ok');
+      setSelectedSlave(null);
+      setConfig(null);
     } catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error', 'error'); }
   };
 

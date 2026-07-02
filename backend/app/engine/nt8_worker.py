@@ -586,7 +586,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 _pause_slave(f"{limit_type} diario alcanzado: ${pnl_value:.2f}")
                 continue
 
-            logger.info(f"{display}: OPEN {symbol} {direction} x{contracts} (mode={_config['risk_mode']}) sl={sl} tp={tp}")
+            logger.info(f"{display}: OPEN {symbol} {direction} x{contracts} (mode={_config['risk_mode']} sl={sl} tp={tp} max_c={_config['max_contracts']} fixed={_config['fixed_contracts']})")
             result = conn.open_position(symbol, contracts, direction, sl, tp, _config["magic_number"], account=login)
             if result and result.get("ok"):
                 slave_ticket = str(result.get("position_id", ""))
