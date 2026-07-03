@@ -106,7 +106,7 @@ class CopierOrchestrator:
                     if not config:
                         continue
 
-                    q = mp.Queue()
+                    q = mp.Queue(maxsize=100)
                     stop_flag = mp.Event()
                     self._slave_queues[slave.id] = q
                     self._slave_stop_flags[slave.id] = stop_flag
@@ -289,7 +289,7 @@ class CopierOrchestrator:
 
         logger.info(f"Restarting slave: {cfg.get('name', account_id)} (attempt {len(self._restart_timestamps.get(account_id, deque()))})")
 
-        q = mp.Queue()
+        q = mp.Queue(maxsize=100)
         stop_flag = mp.Event()
 
         if account_id in self._slave_queues:

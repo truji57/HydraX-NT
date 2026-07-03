@@ -32,8 +32,8 @@ def _log_trade(master_id: str | None, slave_id: str, action: TradeAction, symbol
                result: TradeResult, master_ticket: int | None = None,
                slave_ticket: int | None = None,
                error_code: int | None = None, error_msg: str | None = None):
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         entry = TradeLog(
             timestamp=datetime.utcnow(),
             master_account_id=master_id,
@@ -52,9 +52,10 @@ def _log_trade(master_id: str | None, slave_id: str, action: TradeAction, symbol
         )
         db.add(entry)
         db.commit()
-        db.close()
     except Exception:
         pass
+    finally:
+        db.close()
 
 def _emit_event(event_queue, event_type: str, data: dict):
     if event_queue is not None:
@@ -297,14 +298,15 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
             except Exception:
                 pass
 
+            db = SessionLocal()
             try:
-                db = SessionLocal()
                 m = db.query(Account).filter(Account.id == account_id).first()
                 if m:
                     master_enabled = m.copy_enable if m.copy_enable is not None else True
-                db.close()
             except Exception:
                 pass
+            finally:
+                db.close()
 
             for _ in range(int(poll * 10)):
                 if stop_flag.is_set():
@@ -399,19 +401,20 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         except Exception as e:
             logger.error(f"{display}: error closing positions on limit: {e}")
 
+        db_pause = SessionLocal()
         try:
-            db_pause = SessionLocal()
             sc = db_pause.query(SlaveConfig).filter(SlaveConfig.account_id == account_id).first()
             if sc:
                 sc.autocopy_enable = False
                 sc.paused_by_limit = True
                 db_pause.commit()
-            db_pause.close()
             _config["autocopy_enable"] = False
             logger.warning(f"{display}: paused (limit hit): {reason}")
             _emit_event(event_queue, "worker_error", {"worker": display, "error": f"PAUSADO por limite: {reason}"})
         except Exception:
             pass
+        finally:
+            db_pause.close()
 
     def _cleanup_orphan_orders():
         try:
@@ -428,11 +431,10 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             pass
 
     def _reset_daily_if_new_day():
+        db_r = SessionLocal()
         try:
-            db_r = SessionLocal()
             sc = db_r.query(SlaveConfig).filter(SlaveConfig.account_id == account_id).first()
             if not sc:
-                db_r.close()
                 return
             today = datetime.utcnow().date()
             last = sc.last_pnl_reset.date() if sc.last_pnl_reset else None
@@ -446,15 +448,15 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                     logger.info(f"{display}: daily limit reset + reactivated for new day")
                     _emit_event(event_queue, "copy_ok", {"slave": display, "action": "RESET", "info": "Reactivado por nuevo dia"})
                 db_r.commit()
-                db_r.close()
         except Exception:
             pass
+        finally:
+            db_r.close()
 
     def reload_config():
+        db = SessionLocal()
         try:
-            db = SessionLocal()
             cfg = db.query(SlaveConfig).filter(SlaveConfig.account_id == account_id).first()
-            db.close()
             if cfg:
                 _config["risk_mode"] = cfg.risk_mode.value if cfg.risk_mode else "FIXED"
                 _config["risk_percent"] = cfg.risk_percent or 0.5
@@ -477,6 +479,8 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 _config["magic_number"] = cfg.magic_number or 0
         except Exception:
             pass
+        finally:
+            db.close()
 
     idle_cycles = 0
 
