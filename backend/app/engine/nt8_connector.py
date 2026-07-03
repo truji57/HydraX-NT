@@ -2,6 +2,7 @@
 import socket
 import json
 import time
+import threading
 from app.utils.logger import get_logger
 
 logger = get_logger("hydrax.nt8")
@@ -11,6 +12,8 @@ class NT8Connector:
     def __init__(self, host: str = "localhost", port: int = 5555):
         self.host = host
         self.port = port
+        self._sock: socket.socket | None = None
+        self._lock = threading.Lock()
 
     def connect(self) -> bool:
         try:
@@ -23,26 +26,51 @@ class NT8Connector:
             return False
 
     def disconnect(self):
-        pass
+        with self._lock:
+            if self._sock:
+                try:
+                    self._sock.close()
+                except Exception:
+                    pass
+                self._sock = None
+
+    def _ensure_connected(self) -> socket.socket | None:
+        with self._lock:
+            if self._sock is not None:
+                return self._sock
+            try:
+                self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._sock.settimeout(10)
+                self._sock.connect((self.host, self.port))
+                return self._sock
+            except Exception:
+                self._sock = None
+                return None
 
     def _send(self, data: dict) -> dict | None:
+        sock = self._ensure_connected()
+        if sock is None:
+            logger.warning("NT8: could not connect to bridge")
+            return None
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(5)
-            s.connect((self.host, self.port))
             msg = json.dumps(data) + "\n"
-            s.sendall(msg.encode())
+            sock.sendall(msg.encode())
             response = b""
             while b"\n" not in response:
-                chunk = s.recv(4096)
+                chunk = sock.recv(4096)
                 if not chunk:
                     break
                 response += chunk
-            s.close()
             if response:
                 return json.loads(response.decode("utf-8-sig").strip())
         except Exception as e:
-            logger.warning(f"NT8: {e}")
+            logger.warning(f"NT8: {e}, reconnecting...")
+            with self._lock:
+                try:
+                    self._sock.close()
+                except Exception:
+                    pass
+                self._sock = None
         return None
 
     def get_account(self, account_name: str = "") -> dict | None:

@@ -151,11 +151,12 @@ def reconcile_stale_positions() -> int:
                 ).all()
 
                 for entry in open_entries:
-                    if str(entry.slave_ticket) not in real_ids:
-                        entry.status = TicketStatus.CLOSED
-                        entry.closed_at = datetime.utcnow()
-                        fixed += 1
-                        logger.info(f"Reconciled: slave={slave.name} ticket={entry.slave_ticket} -> CLOSED")
+                    if entry.slave_ticket and entry.slave_ticket.startswith("hp_"):
+                        if entry.slave_ticket not in real_ids:
+                            entry.status = TicketStatus.CLOSED
+                            entry.closed_at = datetime.utcnow()
+                            fixed += 1
+                            logger.info(f"Reconciled: slave={slave.name} ticket={entry.slave_ticket} -> CLOSED")
 
                 conn.disconnect()
             except Exception:

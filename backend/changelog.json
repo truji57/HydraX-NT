@@ -1,5 +1,10 @@
 [
     {
+        "date":  "2026-07-03",
+        "description":  "Auditoria critica: SQLite WAL + hash estable MD5 + TCP persistente + fix reconciliacion posiciones",
+        "version":  "v1.34"
+    },
+    {
         "date":  "2026-07-02",
         "description":  "Changelog de versiones en Ajustes + /commit actualiza changelog automaticamente",
         "version":  "v1.33"

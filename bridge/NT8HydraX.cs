@@ -144,21 +144,24 @@ namespace NinjaTrader.NinjaScript.AddOns
                 var writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
                 try
                 {
-                    string line = reader.ReadLine();
-                    if (string.IsNullOrEmpty(line)) return;
+                    while (client.Connected)
+                    {
+                        string line = reader.ReadLine();
+                        if (string.IsNullOrEmpty(line)) break;
 
-                    var cmd = _json.Deserialize<Dictionary<string, object>>(line);
-                    string action = cmd.ContainsKey("action") ? cmd["action"].ToString() : "";
-                    string response = "{}";
+                        var cmd = _json.Deserialize<Dictionary<string, object>>(line);
+                        string action = cmd.ContainsKey("action") ? cmd["action"].ToString() : "";
+                        string response = "{}";
 
-                    if (action == "ACCOUNT") response = GetAccountInfo(cmd);
-                    else if (action == "POSITIONS") response = GetPositions(cmd);
-                    else if (action == "ORDERS") response = GetOrders(cmd);
-                    else if (action == "OPEN") response = OpenPosition(cmd);
-                    else if (action == "CLOSE") response = ClosePosition(cmd);
-                    else if (action == "MODIFY") response = ModifyPosition(cmd);
+                        if (action == "ACCOUNT") response = GetAccountInfo(cmd);
+                        else if (action == "POSITIONS") response = GetPositions(cmd);
+                        else if (action == "ORDERS") response = GetOrders(cmd);
+                        else if (action == "OPEN") response = OpenPosition(cmd);
+                        else if (action == "CLOSE") response = ClosePosition(cmd);
+                        else if (action == "MODIFY") response = ModifyPosition(cmd);
 
-                    writer.WriteLine(response);
+                        writer.WriteLine(response);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -412,7 +415,9 @@ namespace NinjaTrader.NinjaScript.AddOns
                             Log("HydraX: TP " + tp + " placed for " + symbol + " on " + acc.Name, LogLevel.Information);
                         }
                     }
-                    return "{\"ok\":true,\"position_id\":\"" + symbol + "_" + DateTime.Now.Ticks + "\"}";
+                    var pos = acc.Positions.FirstOrDefault(p => p.Instrument == instrument && p.Quantity != 0);
+                    string posId = pos != null ? GetOrAssignPositionId(acc, pos) : (symbol + "_" + DateTime.Now.Ticks);
+                    return "{\"ok\":true,\"position_id\":\"" + posId + "\"}";
                 }
 
                 return "{\"ok\":false,\"error\":\"Order " + order.OrderState + "\"}";

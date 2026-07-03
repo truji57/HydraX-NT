@@ -1,4 +1,5 @@
 """Worker NinjaTrader 8 - monitor para masters y executor para slaves."""
+import hashlib
 import time
 import traceback
 import multiprocessing as mp
@@ -20,6 +21,10 @@ from app.engine.command_router import is_slave_linked_to_master
 from app.utils.logger import get_logger
 
 logger = get_logger("hydrax.nt8")
+
+
+def _stable_ticket(id_str: str) -> int:
+    return int(hashlib.md5(id_str.encode()).hexdigest()[:12], 16) % 1000000
 
 
 def _log_trade(master_id: str | None, slave_id: str, action: TradeAction, symbol: str,
@@ -77,13 +82,13 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
     prev_positions = {}
     positions = conn.get_positions(login)
     for p in positions:
-        pid = p.get("id", str(hash(str(p))))
+        pid = p.get("id") or _stable_ticket(str(p))
         prev_positions[pid] = p
-    logger.info(f"{display}: ignoring {len(prev_positions)} existing positions")
+    logger.info(f"{display}: tracking {len(prev_positions)} existing positions")
 
     pending_open: dict[str, int] = {}
 
-    prev_orders = {str(o.get("ticket", hash(str(o)))): o for o in conn.get_orders(login)}
+    prev_orders = {str(o.get("ticket", _stable_ticket(str(o)))): o for o in conn.get_orders(login)}
     logger.info(f"{display}: ignoring {len(prev_orders)} existing orders")
 
     recent_removed_sltp: dict[str, int] = {}
@@ -103,10 +108,10 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
             cur_positions = {}
             positions = conn.get_positions(login)
             for p in positions:
-                pid = p.get("id", str(hash(str(p))))
+                pid = p.get("id") or _stable_ticket(str(p))
                 cur_positions[pid] = p
 
-            cur_orders = {str(o.get("ticket", hash(str(o)))): o for o in conn.get_orders(login)}
+            cur_orders = {str(o.get("ticket", _stable_ticket(str(o)))): o for o in conn.get_orders(login)}
 
 
             for pid, p in list(cur_positions.items()):
@@ -139,7 +144,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                             "price": p.get("entry_price", 0),
                             "sl": p.get("sl", 0) or 0,
                             "tp": p.get("tp", 0) or 0,
-                            "master_ticket": hash(pid) % 1000000,
+                            "master_ticket": _stable_ticket(pid),
                             "master_account_id": account_id,
                             "master_name": display,
                             "bridge_host": bridge_host,
@@ -198,7 +203,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                         cmd = {
                             "action": "CLOSE",
                             "payload": {
-                                "position_ticket": hash(pid) % 1000000,
+                                "position_ticket": _stable_ticket(pid),
                                 "symbol": symbol,
                                 "direction": p.get("direction", "BUY"),
                                 "contracts": p.get("contracts", 1),
@@ -240,7 +245,7 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                             cmd = {
                                 "action": "MODIFY",
                                 "payload": {
-                                    "position_ticket": hash(pid) % 1000000,
+                                    "position_ticket": _stable_ticket(pid),
                                     "symbol": cur.get("symbol", "?"),
                                     "new_sl": new_sl,
                                     "new_tp": new_tp,
@@ -611,7 +616,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             master_ticket = payload["position_ticket"]
             slave_position_id = get_slave_ticket(master_ticket, account_id)
             if not slave_position_id:
-                logger.warning(f"{display}: no mapping for master_ticket={master_ticket}")
+                logger.warning(f"{display}: no mapping for master_ticket={master_ticket} (maybe position was from before restart?)")
                 continue
 
             symbol = payload.get("symbol", "")
@@ -620,14 +625,14 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 mark_closed(master_ticket, account_id)
                 _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),
                            payload.get("contracts", 0), 0, None, None, TradeResult.SUCCESS,
-                           master_ticket=master_ticket, slave_ticket=hash(slave_position_id) % 1000000)
+                           master_ticket=master_ticket, slave_ticket=_stable_ticket(str(slave_position_id)))
                 _emit_event(event_queue, "copy_ok", {"slave": display, "symbol": payload.get("symbol", ""),
                            "action": "CLOSE", "master_ticket": master_ticket, "source": "hydrax"})
                 logger.info(f"{display}: CLOSE OK {payload.get('symbol','?')} [HydraX]")
             else:
                 _log_trade(master_account_id, account_id, TradeAction.CLOSE, payload.get("symbol", ""),
                            payload.get("contracts", 0), 0, None, None, TradeResult.FAILED,
-                           master_ticket=master_ticket, slave_ticket=hash(slave_position_id) % 1000000)
+                           master_ticket=master_ticket, slave_ticket=_stable_ticket(str(slave_position_id)))
                 logger.error(f"{display}: CLOSE FAIL {payload.get('symbol','?')} | {result.get('error', 'no result') if result else 'result is None'}")
 
         elif action == "MODIFY":
@@ -655,7 +660,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             if result and result.get("ok"):
                 _log_trade(master_account_id, account_id, TradeAction.MODIFY, symbol, 0, 0,
                            new_sl, new_tp, TradeResult.SUCCESS,
-                           master_ticket=master_ticket, slave_ticket=hash(slave_position_id) % 1000000)
+                           master_ticket=master_ticket, slave_ticket=_stable_ticket(str(slave_position_id)))
                 _emit_event(event_queue, "copy_ok", {"slave": display, "symbol": symbol, "action": "MODIFY"})
                 logger.info(f"{display}: MODIFY OK {symbol} SL={new_sl} TP={new_tp}")
             else:

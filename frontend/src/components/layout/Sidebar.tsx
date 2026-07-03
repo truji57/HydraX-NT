@@ -33,8 +33,8 @@ export function Sidebar() {
   return (
     <aside className="w-56 h-screen border-r border-zinc-800 bg-zinc-950 flex flex-col">
       <div className={cn('p-4 border-b border-zinc-800 text-center transition-all', copierStatus.running && 'border-emerald-500/40 shadow-[inset_0_-1px_0_rgba(34,197,94,0.2)]')}>
-        <img src="/logo.png" alt="HydraX" className={cn('h-24 w-24 mx-auto mb-2', copierStatus.running ? 'drop-shadow-[0_0_24px_rgba(34,197,94,0.7)]' : 'drop-shadow-[0_0_8px_rgba(34,197,94,0.2)]')} />
-        <h1 className="text-xl font-bold text-emerald-400">HydraX-NT</h1>
+        <img src="/logo.png" alt="HydraX" className={cn('h-32 w-32 mx-auto mt-1 mb-2', copierStatus.running ? 'drop-shadow-[0_0_24px_rgba(34,197,94,0.7)]' : 'drop-shadow-[0_0_8px_rgba(34,197,94,0.2)]')} />
+        <h1 className="text-xl font-extrabold text-emerald-400 tracking-tight" style={{fontFamily: 'Inter, sans-serif'}}>HydraX-NT</h1>
         <span className="text-xs text-zinc-500">NinjaTrader Copier v{version || "..."}</span>
       </div>
 
