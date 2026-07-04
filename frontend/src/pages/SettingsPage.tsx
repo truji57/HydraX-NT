@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useStore } from '../store';
-import { Download, Upload } from 'lucide-react';
+import { Download, Upload, Copy } from 'lucide-react';
 
 interface ChangelogEntry {
   version: string;
@@ -48,6 +48,14 @@ export default function SettingsPage() {
     setImporting(false);
   };
 
+  const handleCopyBridge = async () => {
+    try {
+      const resp = await fetch('/api/system/copy-bridge', { method: 'POST' });
+      const data = await resp.json();
+      showToast(data.ok ? data.message : data.error, data.ok ? 'ok' : 'error');
+    } catch { showToast('Error al copiar', 'error'); }
+  };
+
   return (
     <div className="space-y-6">
       <div><h2 className="text-xl font-bold text-white">Ajustes</h2><p className="text-sm text-zinc-500">Configuracion global</p></div>
@@ -59,6 +67,10 @@ export default function SettingsPage() {
             <div className="flex justify-between"><span className="text-zinc-400">Backend</span><span className="text-emerald-400">http://localhost:8005</span></div>
             <div className="flex justify-between"><span className="text-zinc-400">Frontend</span><span className="text-emerald-400">http://localhost:5173</span></div>
             <div className="flex justify-between"><span className="text-zinc-400">API Docs</span><a href="http://localhost:8005/docs" target="_blank" className="text-blue-400 hover:underline">Swagger UI</a></div>
+          </div>
+          <div className="pt-2 border-t border-zinc-700">
+            <Button variant="outline" size="sm" onClick={handleCopyBridge}><Copy size={14} /> Copiar Bridge a NT8</Button>
+            <p className="text-[10px] text-zinc-600 mt-1">Copia NT8HydraX.cs a la carpeta AddOns. Luego haz F5 en NT8 para compilar.</p>
           </div>
         </Card>
         <Card className="p-4 space-y-4">

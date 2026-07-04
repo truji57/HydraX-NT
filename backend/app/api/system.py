@@ -153,3 +153,20 @@ def changelog():
     if not path.exists():
         return []
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+@router.post("/copy-bridge")
+def copy_bridge():
+    import shutil
+    from pathlib import Path
+    src = Path(__file__).resolve().parent.parent.parent.parent / "bridge" / "NT8HydraX.cs"
+    dst = Path.home() / "Documents" / "NinjaTrader 8" / "bin" / "Custom" / "AddOns" / "NT8HydraX.cs"
+    if not src.exists():
+        return {"ok": False, "error": f"Archivo no encontrado: {src}"}
+    if not dst.parent.exists():
+        return {"ok": False, "error": f"Carpeta AddOns no encontrada: {dst.parent}. Asegurate de tener NT8 instalado."}
+    try:
+        shutil.copy2(src, dst)
+        return {"ok": True, "message": f"Bridge copiado a {dst}. Recompila en NT8 (F5)."}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

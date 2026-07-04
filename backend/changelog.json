@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-07-04",
+        "description":  "Boton Copiar Bridge a NT8 en Ajustes + fix Emergency Close ticket especifico",
+        "version":  "v1.38"
+    },
+    {
+        "date":  "2026-07-04",
         "description":  "Auditoria completada: criticos (WAL + hash MD5 + TCP persistente) + altos (H1-H8 excepto H4). Estabilidad validada.",
         "version":  "v1.37"
     },
