@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-07-04",
+        "description":  "Auditoria completada: criticos (WAL + hash MD5 + TCP persistente) + altos (H1-H8 excepto H4). Estabilidad validada.",
+        "version":  "v1.37"
+    },
+    {
+        "date":  "2026-07-04",
         "description":  "Fix H6 (Emergency Close solo cierra ticket especifico) + H8 (broadcast con event loop unico) + reorden sidebar",
         "version":  "v1.36"
     },
