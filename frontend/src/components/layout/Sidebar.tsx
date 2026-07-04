@@ -10,8 +10,8 @@ const links = [
   { to: '/accounts', icon: Users, label: 'Cuentas' },
   { to: '/slaves', icon: ArrowLeftRight, label: 'Slaves' },
   { to: '/history', icon: History, label: 'Historial' },
-  { to: '/settings', icon: Settings, label: 'Ajustes' },
   { to: '/templates', icon: Layers, label: 'Plantillas' },
+  { to: '/settings', icon: Settings, label: 'Ajustes' },
 ];
 
 export function Sidebar() {

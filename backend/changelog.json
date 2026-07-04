@@ -1,5 +1,10 @@
 [
     {
+        "date":  "2026-07-04",
+        "description":  "Fix H6 (Emergency Close solo cierra ticket especifico) + H8 (broadcast con event loop unico) + reorden sidebar",
+        "version":  "v1.36"
+    },
+    {
         "date":  "2026-07-03",
         "description":  "Fix H2 (fuga sesiones BD con try/finally) + H5 (colas slaves con maxsize=100)",
         "version":  "v1.35"

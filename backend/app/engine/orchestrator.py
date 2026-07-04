@@ -332,19 +332,19 @@ class CopierOrchestrator:
     def _broadcast_events(self):
         import asyncio
         from app.ws.manager import manager as ws_manager
+        loop = asyncio.new_event_loop()
         while self._running:
             try:
                 event = self._event_queue.get(timeout=1)
                 if event is None:
                     continue
                 try:
-                    loop = asyncio.new_event_loop()
                     loop.run_until_complete(ws_manager.broadcast(event["type"], event.get("data", {})))
-                    loop.close()
                 except Exception:
                     pass
             except Exception:
                 pass
+        loop.close()
 
     def _check_workers_alive(self):
         dead_masters = []

@@ -62,6 +62,7 @@ def emergency_close(slave_id: str, db: Session = Depends(get_db)):
                 closed += 1
                 db.query(TicketMap).filter(
                     TicketMap.slave_account_id == slave_id,
+                    TicketMap.slave_ticket == pid,
                     TicketMap.status == TicketStatus.OPEN,
                 ).update({TicketMap.status: TicketStatus.CLOSED})
             else:
@@ -139,6 +140,7 @@ def emergency_close_all(db: Session = Depends(get_db)):
                         total_closed += 1
                         db.query(TicketMap).filter(
                             TicketMap.slave_account_id == slave.id,
+                            TicketMap.slave_ticket == pid,
                             TicketMap.status == TicketStatus.OPEN,
                         ).update({TicketMap.status: TicketStatus.CLOSED})
                     else:
