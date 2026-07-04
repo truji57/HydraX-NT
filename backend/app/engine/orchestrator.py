@@ -374,11 +374,11 @@ class CopierOrchestrator:
         while self._running:
             dead_masters, dead_slaves = self._check_workers_alive()
 
-            for mid in dead_masters:
-                logger.warning(f"Worker DOWN: master:{mid}")
-                with self._lock:
-                    if not self._running:
-                        break
+            with self._lock:
+                if not self._running:
+                    break
+                for mid in dead_masters:
+                    logger.warning(f"Worker DOWN: master:{mid}")
                     if mid in self._master_processes:
                         old_proc = self._master_processes.pop(mid, None)
                         if old_proc and old_proc.is_alive():
@@ -392,11 +392,8 @@ class CopierOrchestrator:
                                 pass
                     self._restart_master(mid)
 
-            for sid in dead_slaves:
-                logger.warning(f"Worker DOWN: slave:{sid}")
-                with self._lock:
-                    if not self._running:
-                        break
+                for sid in dead_slaves:
+                    logger.warning(f"Worker DOWN: slave:{sid}")
                     if sid in self._slave_processes:
                         old_proc = self._slave_processes.pop(sid, None)
                         if old_proc and old_proc.is_alive():
@@ -413,10 +410,12 @@ class CopierOrchestrator:
 
 
 _orchestrator: CopierOrchestrator | None = None
+_orch_lock = threading.Lock()
 
 
 def get_orchestrator() -> CopierOrchestrator:
     global _orchestrator
-    if _orchestrator is None:
-        _orchestrator = CopierOrchestrator()
-    return _orchestrator
+    with _orch_lock:
+        if _orchestrator is None:
+            _orchestrator = CopierOrchestrator()
+        return _orchestrator
