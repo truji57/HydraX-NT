@@ -145,7 +145,35 @@ async def backup_import(file: UploadFile = File(...), db: Session = Depends(get_
         return {"ok": False, "error": str(e)}
 
 
-@router.get("/changelog")
+@router.get("/update-check")
+def update_check():
+    import subprocess
+    from app.config import get_version, BASE_DIR
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", "--tags", "origin"],
+            capture_output=True, text=True, cwd=str(BASE_DIR.parent), timeout=10
+        )
+        if result.returncode != 0:
+            return {"update_available": False}
+        tags = []
+        for line in result.stdout.strip().split("\n"):
+            if line and "refs/tags/v" in line:
+                tag = line.split("refs/tags/")[-1].strip()
+                if not tag.endswith("^{}"):
+                    tags.append(tag)
+        if not tags:
+            return {"update_available": False}
+        tags.sort(key=lambda t: [int(x) for x in t.lstrip("v").split(".")])
+        latest_remote = tags[-1]
+        local = get_version()
+        return {
+            "update_available": latest_remote.lstrip("v") != local,
+            "current": local,
+            "latest": latest_remote.lstrip("v"),
+        }
+    except Exception:
+        return {"update_available": False}
 def changelog():
     import json
     from pathlib import Path

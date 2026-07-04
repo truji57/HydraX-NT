@@ -14,12 +14,18 @@ export default function SettingsPage() {
   const { copierStatus, version, showToast } = useStore();
   const [importing, setImporting] = useState(false);
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
+  const [updateAvail, setUpdateAvail] = useState(false);
+  const [latestVer, setLatestVer] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/system/changelog')
       .then(r => r.json())
       .then(setChangelog)
+      .catch(() => {});
+    fetch('/api/system/update-check')
+      .then(r => r.json())
+      .then(d => { if (d.update_available) { setUpdateAvail(true); setLatestVer(d.latest); } })
       .catch(() => {});
   }, []);
 
@@ -63,7 +69,7 @@ export default function SettingsPage() {
         <Card className="p-4 space-y-4">
           <h3 className="text-sm font-medium text-white">Informacion</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-zinc-400">Version</span><span className="text-white">{version || '...'}</span></div>
+            <div className="flex justify-between"><span className="text-zinc-400">Version</span><span className="text-white">{version || '...'} {updateAvail && <span className="text-amber-400">(v{latestVer} disponible)</span>}</span></div>
             <div className="flex justify-between"><span className="text-zinc-400">Backend</span><span className="text-emerald-400">http://localhost:8005</span></div>
             <div className="flex justify-between"><span className="text-zinc-400">Frontend</span><span className="text-emerald-400">http://localhost:5173</span></div>
             <div className="flex justify-between"><span className="text-zinc-400">API Docs</span><a href="http://localhost:8005/docs" target="_blank" className="text-blue-400 hover:underline">Swagger UI</a></div>
