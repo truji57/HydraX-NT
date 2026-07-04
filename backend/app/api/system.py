@@ -187,14 +187,47 @@ def changelog():
 def copy_bridge():
     import shutil
     from pathlib import Path
-    src = Path(__file__).resolve().parent.parent.parent.parent / "bridge" / "NT8HydraX.cs"
-    dst = Path.home() / "Documents" / "NinjaTrader 8" / "bin" / "Custom" / "AddOns" / "NT8HydraX.cs"
-    if not src.exists():
-        return {"ok": False, "error": f"Archivo no encontrado: {src}"}
-    if not dst.parent.exists():
-        return {"ok": False, "error": f"Carpeta AddOns no encontrada: {dst.parent}. Asegurate de tener NT8 instalado."}
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+    addons = Path.home() / "Documents" / "NinjaTrader 8" / "bin" / "Custom" / "AddOns"
+    config_dst = Path.home() / "Documents" / "NinjaTrader 8" / "hydrax_config.json"
+
+    if not addons.exists():
+        return {"ok": False, "error": f"Carpeta AddOns no encontrada: {addons}. Asegurate de tener NT8 instalado."}
+
+    copied = []
+    for file_name, dst in [("NT8HydraX.cs", addons / "NT8HydraX.cs"), ("hydrax_config.json", config_dst)]:
+        src = project_root / "bridge" / file_name
+        if src.exists():
+            shutil.copy2(src, dst)
+            copied.append(file_name)
+
+    if not copied:
+        return {"ok": False, "error": "No se encontraron archivos para copiar"}
+    return {"ok": True, "message": f"Copiado a NT8: {', '.join(copied)}. Recompila en NT8 (F5)."}
+
+
+@router.get("/bridge-config")
+def get_bridge_config():
+    import json
+    from pathlib import Path
+    path = Path(__file__).resolve().parent.parent.parent.parent / "bridge" / "hydrax_config.json"
+    if path.exists():
+        try:
+            cfg = json.loads(path.read_text(encoding="utf-8"))
+            return {"ok": True, "port": cfg.get("port", 5555)}
+        except Exception:
+            pass
+    return {"ok": True, "port": 5555}
+
+
+@router.post("/bridge-config")
+def set_bridge_config(data: dict):
+    import json
+    from pathlib import Path
+    port = data.get("port", 5555)
+    path = Path(__file__).resolve().parent.parent.parent.parent / "bridge" / "hydrax_config.json"
     try:
-        shutil.copy2(src, dst)
-        return {"ok": True, "message": f"Bridge copiado a {dst}. Recompila en NT8 (F5)."}
+        path.write_text(json.dumps({"port": int(port)}), encoding="utf-8")
+        return {"ok": True, "message": f"Puerto guardado: {port}. Ahora haz clic en Copiar a NT8 para aplicar el cambio."}
     except Exception as e:
         return {"ok": False, "error": str(e)}

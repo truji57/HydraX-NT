@@ -102,10 +102,17 @@ export default function AccountsPage() {
   const [testing, setTesting] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
   const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
+  const [defaultPort, setDefaultPort] = useState(5555);
 
-  useEffect(() => { fetchAccounts(); }, []);
+  useEffect(() => {
+    fetchAccounts();
+    fetch('/api/system/bridge-config')
+      .then(r => r.json())
+      .then(d => { if (d.ok) setDefaultPort(d.port); })
+      .catch(() => {});
+  }, []);
 
-  const resetForm = () => { setForm(emptyForm); setEditing(null); setShowNewForm(false); };
+  const resetForm = () => { setForm({ ...emptyForm, bridge_port: defaultPort }); setEditing(null); setShowNewForm(false); };
 
   const handleSubmit = async () => {
     try {
@@ -143,7 +150,7 @@ export default function AccountsPage() {
     setForm({ name: a.name, role: a.role, login: a.login, bridge_host: a.bridge_host, bridge_port: a.bridge_port, poll_interval: a.poll_interval, active: a.active, color: a.color || '#3b82f6' });
   };
 
-  const openNew = (role: Account['role']) => { setEditing(null); setForm({ ...emptyForm, role }); setShowNewForm(true); };
+  const openNew = (role: Account['role']) => { setEditing(null); setForm({ ...emptyForm, role, bridge_port: defaultPort }); setShowNewForm(true); };
 
   return (
     <div className="space-y-6">

@@ -16,6 +16,10 @@ export default function SettingsPage() {
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
   const [updateAvail, setUpdateAvail] = useState(false);
   const [latestVer, setLatestVer] = useState('');
+  const [bridgePort, setBridgePort] = useState(5555);
+  const [savingPort, setSavingPort] = useState(false);
+  const [copyingBridge, setCopyingBridge] = useState(false);
+  const [showCopyHint, setShowCopyHint] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -26,6 +30,10 @@ export default function SettingsPage() {
     fetch('/api/system/update-check')
       .then(r => r.json())
       .then(d => { if (d.update_available) { setUpdateAvail(true); setLatestVer(d.latest); } })
+      .catch(() => {});
+    fetch('/api/system/bridge-config')
+      .then(r => r.json())
+      .then(d => { if (d.ok) setBridgePort(d.port); })
       .catch(() => {});
   }, []);
 
@@ -55,11 +63,28 @@ export default function SettingsPage() {
   };
 
   const handleCopyBridge = async () => {
+    setCopyingBridge(true);
     try {
       const resp = await fetch('/api/system/copy-bridge', { method: 'POST' });
       const data = await resp.json();
       showToast(data.ok ? data.message : data.error, data.ok ? 'ok' : 'error');
     } catch { showToast('Error al copiar', 'error'); }
+    setCopyingBridge(false);
+  };
+
+  const handleSavePort = async () => {
+    setSavingPort(true);
+    try {
+      const resp = await fetch('/api/system/bridge-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ port: bridgePort }),
+      });
+      const data = await resp.json();
+      showToast(data.ok ? data.message : data.error, data.ok ? 'ok' : 'error');
+      if (data.ok) setShowCopyHint(true);
+    } catch { showToast('Error al guardar', 'error'); }
+    setSavingPort(false);
   };
 
   return (
@@ -74,9 +99,22 @@ export default function SettingsPage() {
             <div className="flex justify-between"><span className="text-zinc-400">Frontend</span><span className="text-emerald-400">http://localhost:5173</span></div>
             <div className="flex justify-between"><span className="text-zinc-400">API Docs</span><a href="http://localhost:8005/docs" target="_blank" className="text-blue-400 hover:underline">Swagger UI</a></div>
           </div>
-          <div className="pt-2 border-t border-zinc-700">
-            <Button variant="outline" size="sm" onClick={handleCopyBridge}><Copy size={14} /> Copiar Bridge a NT8</Button>
-            <p className="text-[10px] text-zinc-600 mt-1">Copia NT8HydraX.cs a la carpeta AddOns. Luego haz F5 en NT8 para compilar.</p>
+          <div className="pt-2 border-t border-zinc-700 space-y-2">
+            <p className="text-xs text-zinc-500">Puerto del Bridge NT8</p>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={bridgePort}
+                onChange={e => setBridgePort(Number(e.target.value))}
+                className="flex h-8 w-24 rounded-md border border-zinc-700 bg-zinc-800/50 px-2 py-1 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+              <Button variant="primary" size="sm" onClick={handleSavePort} disabled={savingPort}>{savingPort ? '...' : 'Guardar'}</Button>
+              <Button variant="outline" size="sm" onClick={handleCopyBridge} disabled={copyingBridge}><Copy size={14} /> {copyingBridge ? '...' : 'Copiar a NT8'}</Button>
+            </div>
+            {showCopyHint && (
+              <p className="text-xs text-amber-400">Puerto guardado. Ahora haz clic en <b>Copiar a NT8</b> para aplicar el cambio al bridge. Luego recompila (F5).</p>
+            )}
+            <p className="text-[10px] text-zinc-600">Guarda el puerto y copia los archivos a NT8. Luego recompila (F5).</p>
           </div>
         </Card>
         <Card className="p-4 space-y-4">

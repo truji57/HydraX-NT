@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-07-04",
+        "description":  "Puerto bridge configurable desde Ajustes + copia archivos a NT8 + puerto automatico en cuentas",
+        "version":  "v1.42"
+    },
+    {
+        "date":  "2026-07-04",
         "description":  "Fix M7 (dashboard stats paralelo con ThreadPoolExecutor)",
         "version":  "v1.41"
     },

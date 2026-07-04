@@ -463,7 +463,7 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 foreach (var o in ordersToCancel)
                 {
-                    for (int i = 0; i < 30; i++)
+                    for (int i = 0; i < 50; i++)
                     {
                         if (o.OrderState == OrderState.Cancelled ||
                             o.OrderState == OrderState.Filled ||
@@ -531,7 +531,7 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 foreach (var o in ordersToCancel)
                 {
-                    for (int i = 0; i < 30; i++)
+                    for (int i = 0; i < 50; i++)
                     {
                         if (o.OrderState == OrderState.Cancelled ||
                             o.OrderState == OrderState.Filled ||
