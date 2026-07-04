@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-07-04",
+        "description":  "Fix M7 (dashboard stats paralelo con ThreadPoolExecutor)",
+        "version":  "v1.41"
+    },
+    {
+        "date":  "2026-07-04",
         "description":  "Fix M4 (race condition monitor workers) + M5 (singleton thread-safe)",
         "version":  "v1.40"
     },

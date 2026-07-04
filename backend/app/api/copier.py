@@ -82,6 +82,7 @@ def sync_positions():
 
 @router.get("/dashboard")
 def dashboard_stats():
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from app.models.account import Account
     from app.engine.nt8_connector import NT8Connector
     from app.database import SessionLocal
@@ -90,24 +91,32 @@ def dashboard_stats():
     try:
         accounts = db.query(Account).filter(Account.active == True).all()
         result = {}
-        for acc in accounts:
+
+        def fetch(acc):
             try:
                 conn = NT8Connector(acc.bridge_host, acc.bridge_port)
                 info = conn.get_account(acc.login)
+                conn.disconnect()
                 if info and info.get("ok"):
                     realized = info.get("realized", 0)
                     unrealized = info.get("unrealized", 0)
-                    result[acc.id] = {
-                        "unrealized": unrealized,
-                        "positions": info.get("positions", 0),
-                        "balance": info.get("balance", 0),
-                        "day_pnl": realized + unrealized,
-                    }
-                else:
-                    result[acc.id] = {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0}
-                conn.disconnect()
+                    return acc.id, {"unrealized": unrealized, "positions": info.get("positions", 0), "balance": info.get("balance", 0), "day_pnl": realized + unrealized}
             except Exception:
-                result[acc.id] = {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0}
+                pass
+            return acc.id, {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0}
+
+        with ThreadPoolExecutor(max_workers=min(len(accounts), 10)) as executor:
+            futures = {executor.submit(fetch, acc): acc.id for acc in accounts}
+            for future in as_completed(futures, timeout=8):
+                try:
+                    acc_id, data = future.result(timeout=5)
+                    result[acc_id] = data
+                except Exception:
+                    pass
+            for acc in accounts:
+                if acc.id not in result:
+                    result[acc.id] = {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0}
+
         return {"ok": True, "data": result}
     finally:
         db.close()
