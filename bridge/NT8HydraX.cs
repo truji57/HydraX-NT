@@ -144,7 +144,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                 var writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
                 try
                 {
-                    while (client.Connected)
+                    while (true)
                     {
                         string line = reader.ReadLine();
                         if (string.IsNullOrEmpty(line)) break;

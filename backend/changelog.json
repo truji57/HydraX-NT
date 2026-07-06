@@ -1,5 +1,10 @@
 [
     {
+        "date":  "2026-07-06",
+        "description":  "Fix TCP persistente: bridge while(true) + conector con reintento",
+        "version":  "v1.43"
+    },
+    {
         "date":  "2026-07-04",
         "description":  "Puerto bridge configurable desde Ajustes + copia archivos a NT8 + puerto automatico en cuentas",
         "version":  "v1.42"

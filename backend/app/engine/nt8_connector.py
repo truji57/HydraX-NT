@@ -48,29 +48,32 @@ class NT8Connector:
                 return None
 
     def _send(self, data: dict) -> dict | None:
-        sock = self._ensure_connected()
-        if sock is None:
-            logger.warning("NT8: could not connect to bridge")
-            return None
-        try:
-            msg = json.dumps(data) + "\n"
-            sock.sendall(msg.encode())
-            response = b""
-            while b"\n" not in response:
-                chunk = sock.recv(4096)
-                if not chunk:
-                    break
-                response += chunk
-            if response:
-                return json.loads(response.decode("utf-8-sig").strip())
-        except Exception as e:
-            logger.warning(f"NT8: {e}, reconnecting...")
-            with self._lock:
-                try:
-                    self._sock.close()
-                except Exception:
-                    pass
-                self._sock = None
+        for attempt in range(2):
+            sock = self._ensure_connected()
+            if sock is None:
+                return None
+            try:
+                msg = json.dumps(data) + "\n"
+                sock.sendall(msg.encode())
+                response = b""
+                while b"\n" not in response:
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        break
+                    response += chunk
+                if response:
+                    return json.loads(response.decode("utf-8-sig").strip())
+            except Exception as e:
+                if attempt == 0:
+                    logger.debug(f"NT8: retry after {e}")
+                    with self._lock:
+                        try:
+                            self._sock.close()
+                        except Exception:
+                            pass
+                        self._sock = None
+                else:
+                    logger.warning(f"NT8: {e}, reconnecting...")
         return None
 
     def get_account(self, account_name: str = "") -> dict | None:
