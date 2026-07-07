@@ -1,5 +1,10 @@
 [
     {
+        "date":  "2026-07-07",
+        "description":  "Log limits check a DEBUG (menos ruido) + fix bridge hydrax_config editable desde proyecto",
+        "version":  "v1.44"
+    },
+    {
         "date":  "2026-07-06",
         "description":  "Fix TCP persistente: bridge while(true) + conector con reintento",
         "version":  "v1.43"

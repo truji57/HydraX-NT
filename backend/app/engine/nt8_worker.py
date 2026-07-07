@@ -379,7 +379,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             realized = float(info.get("realized", 0))
             unrealized = float(info.get("unrealized", 0))
             day_pnl = realized + unrealized
-            logger.info(f"{display}: limits check loss_enabled={_config['daily_loss_enabled']} loss={_config['daily_loss_limit']} profit_enabled={_config['daily_profit_enabled']} profit={_config['daily_profit_limit']} day_pnl={day_pnl:.2f}")
+            logger.debug(f"{display}: limits check loss_enabled={_config['daily_loss_enabled']} loss={_config['daily_loss_limit']} profit_enabled={_config['daily_profit_enabled']} profit={_config['daily_profit_limit']} day_pnl={day_pnl:.2f}")
             if _config["daily_loss_enabled"] and day_pnl <= -abs(_config["daily_loss_limit"]):
                 return ("loss", day_pnl)
             if _config["daily_profit_enabled"] and day_pnl >= abs(_config["daily_profit_limit"]):
