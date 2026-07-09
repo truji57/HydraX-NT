@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-07-09",
+        "description":  "Fix: limites % usan balance inicial del dia, no el balance actual",
+        "version":  "v1.46"
+    },
+    {
+        "date":  "2026-07-09",
         "description":  "Limites diarios USD/% + Protecciones visibles en Dashboard [Prot: -X$ | +X$]",
         "version":  "v1.45"
     },

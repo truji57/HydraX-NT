@@ -105,15 +105,16 @@ def dashboard_stats():
 
                     if acc.role == "SLAVE":
                         sc = db.query(SlaveConfig).filter(SlaveConfig.account_id == acc.id).first()
+                        day_start_balance = balance - (realized + unrealized)
                         if sc and sc.daily_loss_enabled:
                             limit = sc.daily_loss_limit or 0
                             if sc.daily_loss_mode and sc.daily_loss_mode.value == "PERCENT":
-                                limit = balance * (limit / 100.0)
+                                limit = day_start_balance * (limit / 100.0)
                             data["loss_limit_usd"] = limit
                         if sc and sc.daily_profit_enabled:
                             limit = sc.daily_profit_limit or 0
                             if sc.daily_profit_mode and sc.daily_profit_mode.value == "PERCENT":
-                                limit = balance * (limit / 100.0)
+                                limit = day_start_balance * (limit / 100.0)
                             data["profit_limit_usd"] = limit
                     return acc.id, data
             except Exception:
