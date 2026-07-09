@@ -88,11 +88,14 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
     logger.info(f"{display}: tracking {len(prev_positions)} existing positions")
 
     pending_open: dict[str, int] = {}
+    pending_close: dict[str, dict] = {}
 
     prev_orders = {str(o.get("ticket", _stable_ticket(str(o)))): o for o in conn.get_orders(login)}
     logger.info(f"{display}: ignoring {len(prev_orders)} existing orders")
 
-    recent_removed_sltp: dict[str, int] = {}
+    recent_removed_sltp: dict[str, dict] = {}
+
+    first_cycle = True
 
     master_balance = 0.0
     try:
@@ -169,18 +172,27 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                     except Exception:
                         pass
 
-            removed_sltp = set()
-            for ot, o in prev_orders.items():
-                if ot not in cur_orders and o.get("type") in ("STOP", "LIMIT"):
-                    removed_sltp.add(o.get("symbol", ""))
+            removed_sltp = {}
+            if not first_cycle:
+                for ot, o in prev_orders.items():
+                    if ot not in cur_orders and o.get("type") in ("STOP", "LIMIT"):
+                        sym = o.get("symbol", "")
+                        dir_key = o.get("direction", "BUY")
+                        removed_sltp[sym] = dir_key
+                        logger.info(f"{display}: order removed {ot} type={o.get('type')} symbol={sym} dir={dir_key} -> added to removed_sltp")
+            first_cycle = False
 
-            for sym in removed_sltp:
-                recent_removed_sltp[sym] = 3
-            decay = [s for s, c in recent_removed_sltp.items() if c <= 1]
+            for sym, dir_key in removed_sltp.items():
+                if sym not in recent_removed_sltp:
+                    recent_removed_sltp[sym] = {"dir": dir_key, "counter": 3}
+                else:
+                    recent_removed_sltp[sym] = {"dir": dir_key, "counter": 3}
+
+            decay = [s for s, v in recent_removed_sltp.items() if v["counter"] <= 1]
             for s in decay:
                 del recent_removed_sltp[s]
-            for s in list(recent_removed_sltp.keys()):
-                recent_removed_sltp[s] -= 1
+            for s in recent_removed_sltp:
+                recent_removed_sltp[s]["counter"] -= 1
 
             modified_to_zero = set()
             for pid, cur in cur_positions.items():
@@ -192,38 +204,59 @@ def nt8_master_monitor(account_id: str, name: str, bridge_host: str, bridge_port
                     cur_tp = cur.get("tp", 0) or 0
                     if (prev_sl > 0 and cur_sl == 0) or (prev_tp > 0 and cur_tp == 0):
                         modified_to_zero.add(pid)
+                        logger.info(f"{display}: modified_to_zero {pid} prev_sl={prev_sl}->{cur_sl} prev_tp={prev_tp}->{cur_tp}")
+
+            confirmed_close = []
+            for pid, info in list(pending_close.items()):
+                if pid not in cur_positions:
+                    confirmed_close.append((pid, info))
+                    logger.info(f"{display}: confirmed close for {pid}")
+                else:
+                    logger.info(f"{display}: flicker detected for {pid}, cancelling close")
+                del pending_close[pid]
+
+            for pid, info in confirmed_close:
+                p = info["p"]
+                close_reason = info.get("reason", "manual")
+                symbol = p.get("symbol", "?")
+                pos_dir = p.get("direction", "BUY")
+                logger.info(f"{display}: closed position {pid} reason={close_reason} symbol={symbol} pos_dir={pos_dir}")
+                if close_reason == "manual" and master_enabled:
+                    logger.info(f"{display}: sending CLOSE to slaves for {pid} reason={close_reason}")
+                    cmd = {
+                        "action": "CLOSE",
+                        "payload": {
+                            "position_ticket": _stable_ticket(pid),
+                            "symbol": symbol,
+                            "direction": p.get("direction", "BUY"),
+                            "contracts": p.get("contracts", 1),
+                            "master_account_id": account_id,
+                            "bridge_host": bridge_host,
+                            "bridge_port": bridge_port,
+                            "nt8_position_id": pid,
+                        },
+                    }
+                    for q in slave_queues.values():
+                        if not stop_flag.is_set():
+                            q.put(cmd)
+                try:
+                    event_queue.put({
+                        "type": "position_close",
+                        "data": {"master": display, "symbol": symbol, "ticket": pid, "reason": close_reason},
+                    })
+                except Exception:
+                    pass
 
             for pid, p in prev_positions.items():
                 if pid not in cur_positions:
                     pending_open.pop(pid, None)
                     symbol = p.get("symbol", "?")
-                    filled_target = symbol in recent_removed_sltp or pid in modified_to_zero
+                    pos_dir = p.get("direction", "BUY")
+                    exit_dir = "SELL" if pos_dir == "BUY" else "BUY"
+                    filled_target = (symbol in recent_removed_sltp and recent_removed_sltp[symbol]["dir"] == exit_dir) or pid in modified_to_zero
                     close_reason = "target" if filled_target else "manual"
-                    logger.info(f"{display}: closed position {pid} reason={close_reason}")
-                    if close_reason == "manual" and master_enabled:
-                        cmd = {
-                            "action": "CLOSE",
-                            "payload": {
-                                "position_ticket": _stable_ticket(pid),
-                                "symbol": symbol,
-                                "direction": p.get("direction", "BUY"),
-                                "contracts": p.get("contracts", 1),
-                                "master_account_id": account_id,
-                                "bridge_host": bridge_host,
-                                "bridge_port": bridge_port,
-                                "nt8_position_id": pid,
-                            },
-                        }
-                        for q in slave_queues.values():
-                            if not stop_flag.is_set():
-                                q.put(cmd)
-                    try:
-                        event_queue.put({
-                            "type": "position_close",
-                            "data": {"master": display, "symbol": symbol, "ticket": pid, "reason": close_reason},
-                        })
-                    except Exception:
-                        pass
+                    logger.info(f"{display}: detected close candidate {pid} reason={close_reason} symbol={symbol} pos_dir={pos_dir} recent_removed_dir={recent_removed_sltp.get(symbol, {}).get('dir')} pid_in_modified_to_zero={pid in modified_to_zero}")
+                    pending_close[pid] = {"p": p, "reason": close_reason}
 
             for pid, cur in cur_positions.items():
                 if pid in prev_positions:

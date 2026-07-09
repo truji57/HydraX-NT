@@ -308,12 +308,15 @@ namespace NinjaTrader.NinjaScript.AddOns
             foreach (var p in acc.Positions.Where(p => p.Quantity != 0))
             {
                 double sl = 0, tp = 0;
+                bool isLong = p.MarketPosition == MarketPosition.Long;
                 foreach (var o in acc.Orders.Where(o => o.Instrument == p.Instrument &&
                     (o.OrderState == OrderState.Working || o.OrderState == OrderState.Accepted)))
                 {
-                    if (o.OrderType == OrderType.StopMarket && o.StopPrice > 0)
+                    if (o.OrderType == OrderType.StopMarket && o.StopPrice > 0 &&
+                        ((isLong && o.OrderAction == OrderAction.Sell) || (!isLong && o.OrderAction == OrderAction.Buy)))
                         sl = o.StopPrice;
-                    if (o.OrderType == OrderType.Limit && o.LimitPrice > 0)
+                    if (o.OrderType == OrderType.Limit && o.LimitPrice > 0 &&
+                        ((isLong && o.OrderAction == OrderAction.Sell) || (!isLong && o.OrderAction == OrderAction.Buy)))
                         tp = o.LimitPrice;
                 }
 
