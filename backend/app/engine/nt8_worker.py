@@ -351,7 +351,9 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         "copy_modify": copy_modify,
         "sync_close": sync_close,
         "daily_loss_enabled": daily_loss_enabled, "daily_loss_limit": daily_loss_limit,
+        "daily_loss_mode": "USD",
         "daily_profit_enabled": daily_profit_enabled, "daily_profit_limit": daily_profit_limit,
+        "daily_profit_mode": "USD",
         "delay_sec": delay_sec, "magic_number": magic_number,
     }
 
@@ -379,10 +381,21 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
             realized = float(info.get("realized", 0))
             unrealized = float(info.get("unrealized", 0))
             day_pnl = realized + unrealized
-            logger.debug(f"{display}: limits check loss_enabled={_config['daily_loss_enabled']} loss={_config['daily_loss_limit']} profit_enabled={_config['daily_profit_enabled']} profit={_config['daily_profit_limit']} day_pnl={day_pnl:.2f}")
-            if _config["daily_loss_enabled"] and day_pnl <= -abs(_config["daily_loss_limit"]):
+
+            loss_limit = _config["daily_loss_limit"]
+            if _config.get("daily_loss_mode", "USD") == "PERCENT":
+                balance = float(info.get("balance", 0))
+                loss_limit = balance * (loss_limit / 100.0)
+
+            profit_limit = _config["daily_profit_limit"]
+            if _config.get("daily_profit_mode", "USD") == "PERCENT":
+                balance = float(info.get("balance", 0))
+                profit_limit = balance * (profit_limit / 100.0)
+
+            logger.debug(f"{display}: limits check loss_enabled={_config['daily_loss_enabled']} loss={loss_limit} profit_enabled={_config['daily_profit_enabled']} profit={profit_limit} day_pnl={day_pnl:.2f}")
+            if _config["daily_loss_enabled"] and day_pnl <= -abs(loss_limit):
                 return ("loss", day_pnl)
-            if _config["daily_profit_enabled"] and day_pnl >= abs(_config["daily_profit_limit"]):
+            if _config["daily_profit_enabled"] and day_pnl >= abs(profit_limit):
                 return ("profit", day_pnl)
         except Exception:
             pass
@@ -473,8 +486,10 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
                 _config["sync_close"] = cfg.sync_close if cfg.sync_close is not None else False
                 _config["daily_loss_enabled"] = cfg.daily_loss_enabled or False
                 _config["daily_loss_limit"] = cfg.daily_loss_limit or 0.0
+                _config["daily_loss_mode"] = cfg.daily_loss_mode.value if cfg.daily_loss_mode else "USD"
                 _config["daily_profit_enabled"] = cfg.daily_profit_enabled or False
                 _config["daily_profit_limit"] = cfg.daily_profit_limit or 0.0
+                _config["daily_profit_mode"] = cfg.daily_profit_mode.value if cfg.daily_profit_mode else "USD"
                 _config["delay_sec"] = cfg.delay_sec or 0.0
                 _config["magic_number"] = cfg.magic_number or 0
         except Exception:
@@ -520,7 +535,7 @@ def nt8_slave_executor(account_id: str, name: str, login: str, bridge_host: str,
         master_account_id = payload.get("master_account_id")
 
         if master_account_id and not is_slave_linked_to_master(account_id, master_account_id):
-            logger.debug(f"{display}: skipped command from unlinked master {master_account_id}")
+            logger.warning(f"{display}: skipped command from unlinked master {master_account_id}")
             continue
 
         if action == "OPEN":

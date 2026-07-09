@@ -174,6 +174,9 @@ def update_check():
         }
     except Exception:
         return {"update_available": False}
+
+
+@router.get("/changelog")
 def changelog():
     import json
     from pathlib import Path

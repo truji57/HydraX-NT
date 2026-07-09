@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
-from app.models.account import AccountRole, RiskMode
+from app.models.account import AccountRole, RiskMode, PnLMode
 
 
 class AccountBase(BaseModel):
@@ -67,8 +67,10 @@ class SlaveConfigBase(BaseModel):
     sync_close: bool = False
     daily_loss_enabled: bool = False
     daily_loss_limit: float = 0.0
+    daily_loss_mode: PnLMode = PnLMode.USD
     daily_profit_enabled: bool = False
     daily_profit_limit: float = 0.0
+    daily_profit_mode: PnLMode = PnLMode.USD
     template_id: Optional[str] = None
     delay_sec: float = 0.0
     magic_number: int = 0
@@ -112,8 +114,10 @@ class SlaveTemplateBase(BaseModel):
     sync_close: bool = False
     daily_loss_enabled: bool = False
     daily_loss_limit: float = 0.0
+    daily_loss_mode: PnLMode = PnLMode.USD
     daily_profit_enabled: bool = False
     daily_profit_limit: float = 0.0
+    daily_profit_mode: PnLMode = PnLMode.USD
     delay_sec: float = 0.0
     magic_number: int = 0
 
@@ -139,8 +143,10 @@ class SlaveTemplateUpdate(BaseModel):
     sync_close: Optional[bool] = None
     daily_loss_enabled: Optional[bool] = None
     daily_loss_limit: Optional[float] = None
+    daily_loss_mode: Optional[PnLMode] = None
     daily_profit_enabled: Optional[bool] = None
     daily_profit_limit: Optional[float] = None
+    daily_profit_mode: Optional[PnLMode] = None
     delay_sec: Optional[float] = None
     magic_number: Optional[int] = None
 

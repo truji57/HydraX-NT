@@ -54,9 +54,11 @@ export default function SlaveConfigPage() {
           t.sync_close === cfg.sync_close &&
           t.daily_loss_enabled === cfg.daily_loss_enabled &&
           t.daily_loss_limit === cfg.daily_loss_limit &&
-        t.daily_profit_enabled === cfg.daily_profit_enabled &&
-        t.daily_profit_limit === cfg.daily_profit_limit
-      );
+          t.daily_loss_mode === cfg.daily_loss_mode &&
+          t.daily_profit_enabled === cfg.daily_profit_enabled &&
+          t.daily_profit_limit === cfg.daily_profit_limit &&
+          t.daily_profit_mode === cfg.daily_profit_mode
+        );
         setActiveTemplateId(match?.id || '');
       }
     } catch { showToast('Error cargando config', 'error'); }
@@ -100,8 +102,10 @@ export default function SlaveConfigPage() {
       sync_close: t.sync_close,
       daily_loss_enabled: t.daily_loss_enabled,
       daily_loss_limit: t.daily_loss_limit,
+      daily_loss_mode: t.daily_loss_mode,
       daily_profit_enabled: t.daily_profit_enabled,
       daily_profit_limit: t.daily_profit_limit,
+      daily_profit_mode: t.daily_profit_mode,
       delay_sec: t.delay_sec,
       magic_number: t.magic_number,
     });
@@ -229,7 +233,10 @@ export default function SlaveConfigPage() {
                       Max perdida
                     </label>
                     <DecimalInput value={config.daily_loss_limit ?? 0} onChange={v => updateConfig({daily_loss_limit: v})} />
-                    <span className="text-xs text-zinc-500">USD</span>
+                    <Select value={config.daily_loss_mode ?? 'USD'} onChange={e => updateConfig({daily_loss_mode: e.target.value as 'USD' | 'PERCENT'})}>
+                      <option value="USD">USD</option>
+                      <option value="PERCENT">%</option>
+                    </Select>
                   </div>
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 text-sm text-zinc-300 min-w-[130px]">
@@ -237,7 +244,10 @@ export default function SlaveConfigPage() {
                       Max ganancia
                     </label>
                     <DecimalInput value={config.daily_profit_limit ?? 0} onChange={v => updateConfig({daily_profit_limit: v})} />
-                    <span className="text-xs text-zinc-500">USD</span>
+                    <Select value={config.daily_profit_mode ?? 'USD'} onChange={e => updateConfig({daily_profit_mode: e.target.value as 'USD' | 'PERCENT'})}>
+                      <option value="USD">USD</option>
+                      <option value="PERCENT">%</option>
+                    </Select>
                   </div>
                 </div>
               </Card>

@@ -25,8 +25,10 @@ const emptyTemplate: Omit<SlaveTemplate, 'id' | 'created_at' | 'updated_at'> = {
   sync_close: false,
   daily_loss_enabled: false,
   daily_loss_limit: 0,
+  daily_loss_mode: 'USD' as const,
   daily_profit_enabled: false,
   daily_profit_limit: 0,
+  daily_profit_mode: 'USD' as const,
   delay_sec: 0,
   magic_number: 0,
 };
@@ -83,7 +85,9 @@ export default function TemplatesPage() {
       autocopy_enable: t.autocopy_enable, copy_sl: t.copy_sl, copy_tp: t.copy_tp,
       inverse_copy: t.inverse_copy, copy_modify: t.copy_modify, sync_close: t.sync_close,
       daily_loss_enabled: t.daily_loss_enabled, daily_loss_limit: t.daily_loss_limit,
+      daily_loss_mode: t.daily_loss_mode,
       daily_profit_enabled: t.daily_profit_enabled, daily_profit_limit: t.daily_profit_limit,
+      daily_profit_mode: t.daily_profit_mode,
       delay_sec: t.delay_sec, magic_number: t.magic_number,
     });
   };
@@ -134,12 +138,18 @@ export default function TemplatesPage() {
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 text-sm text-zinc-300 min-w-[130px]"><Checkbox checked={form.daily_loss_enabled} onChange={e => setForm({...form, daily_loss_enabled: e.target.checked})} />Max perdida</label>
               <DecimalInput value={form.daily_loss_limit ?? 0} onChange={v => setForm({...form, daily_loss_limit: v})} />
-              <span className="text-xs text-zinc-500">USD</span>
+              <Select value={form.daily_loss_mode ?? 'USD'} onChange={e => setForm({...form, daily_loss_mode: e.target.value as 'USD' | 'PERCENT'})}>
+                <option value="USD">USD</option>
+                <option value="PERCENT">%</option>
+              </Select>
             </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 text-sm text-zinc-300 min-w-[130px]"><Checkbox checked={form.daily_profit_enabled} onChange={e => setForm({...form, daily_profit_enabled: e.target.checked})} />Max ganancia</label>
               <DecimalInput value={form.daily_profit_limit ?? 0} onChange={v => setForm({...form, daily_profit_limit: v})} />
-              <span className="text-xs text-zinc-500">USD</span>
+              <Select value={form.daily_profit_mode ?? 'USD'} onChange={e => setForm({...form, daily_profit_mode: e.target.value as 'USD' | 'PERCENT'})}>
+                <option value="USD">USD</option>
+                <option value="PERCENT">%</option>
+              </Select>
             </div>
           </div>
           <div className="flex gap-2 justify-end"><Button variant="ghost" onClick={resetForm}>Cancelar</Button><Button variant="primary" onClick={handleSubmit}>Crear</Button></div>
@@ -202,12 +212,18 @@ export default function TemplatesPage() {
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 text-sm text-zinc-300 min-w-[130px]"><Checkbox checked={form.daily_loss_enabled} onChange={e => setForm({...form, daily_loss_enabled: e.target.checked})} />Max perdida</label>
                     <DecimalInput value={form.daily_loss_limit ?? 0} onChange={v => setForm({...form, daily_loss_limit: v})} />
-                    <span className="text-xs text-zinc-500">USD</span>
+                    <Select value={form.daily_loss_mode ?? 'USD'} onChange={e => setForm({...form, daily_loss_mode: e.target.value as 'USD' | 'PERCENT'})}>
+                      <option value="USD">USD</option>
+                      <option value="PERCENT">%</option>
+                    </Select>
                   </div>
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 text-sm text-zinc-300 min-w-[130px]"><Checkbox checked={form.daily_profit_enabled} onChange={e => setForm({...form, daily_profit_enabled: e.target.checked})} />Max ganancia</label>
                     <DecimalInput value={form.daily_profit_limit ?? 0} onChange={v => setForm({...form, daily_profit_limit: v})} />
-                    <span className="text-xs text-zinc-500">USD</span>
+                    <Select value={form.daily_profit_mode ?? 'USD'} onChange={e => setForm({...form, daily_profit_mode: e.target.value as 'USD' | 'PERCENT'})}>
+                      <option value="USD">USD</option>
+                      <option value="PERCENT">%</option>
+                    </Select>
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end"><Button variant="ghost" onClick={resetForm}>Cancelar</Button><Button variant="primary" onClick={handleSubmit}>Guardar</Button></div>

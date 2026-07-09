@@ -83,7 +83,7 @@ def sync_positions():
 @router.get("/dashboard")
 def dashboard_stats():
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    from app.models.account import Account
+    from app.models.account import Account, SlaveConfig
     from app.engine.nt8_connector import NT8Connector
     from app.database import SessionLocal
 
@@ -100,7 +100,22 @@ def dashboard_stats():
                 if info and info.get("ok"):
                     realized = info.get("realized", 0)
                     unrealized = info.get("unrealized", 0)
-                    return acc.id, {"unrealized": unrealized, "positions": info.get("positions", 0), "balance": info.get("balance", 0), "day_pnl": realized + unrealized}
+                    balance = info.get("balance", 0)
+                    data = {"unrealized": unrealized, "positions": info.get("positions", 0), "balance": balance, "day_pnl": realized + unrealized}
+
+                    if acc.role == "SLAVE":
+                        sc = db.query(SlaveConfig).filter(SlaveConfig.account_id == acc.id).first()
+                        if sc and sc.daily_loss_enabled:
+                            limit = sc.daily_loss_limit or 0
+                            if sc.daily_loss_mode and sc.daily_loss_mode.value == "PERCENT":
+                                limit = balance * (limit / 100.0)
+                            data["loss_limit_usd"] = limit
+                        if sc and sc.daily_profit_enabled:
+                            limit = sc.daily_profit_limit or 0
+                            if sc.daily_profit_mode and sc.daily_profit_mode.value == "PERCENT":
+                                limit = balance * (limit / 100.0)
+                            data["profit_limit_usd"] = limit
+                    return acc.id, data
             except Exception:
                 pass
             return acc.id, {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0}

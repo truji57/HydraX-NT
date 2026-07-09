@@ -25,6 +25,11 @@ class RiskMode(str, enum.Enum):
     BALANCE_PROP = "BALANCE_PROP"
 
 
+class PnLMode(str, enum.Enum):
+    USD = "USD"
+    PERCENT = "PERCENT"
+
+
 class Account(Base):
     __tablename__ = "accounts"
 
@@ -83,8 +88,10 @@ class SlaveConfig(Base):
     template_id = Column(String, ForeignKey("slave_templates.id", ondelete="SET NULL"), nullable=True)
     daily_loss_enabled = Column(Boolean, default=False)
     daily_loss_limit = Column(Float, default=0.0)
+    daily_loss_mode = Column(Enum(PnLMode), default=PnLMode.USD)
     daily_profit_enabled = Column(Boolean, default=False)
     daily_profit_limit = Column(Float, default=0.0)
+    daily_profit_mode = Column(Enum(PnLMode), default=PnLMode.USD)
     daily_pnl = Column(Float, default=0.0)
     last_pnl_reset = Column(DateTime, nullable=True)
     paused_by_limit = Column(Boolean, default=False)
@@ -126,8 +133,10 @@ class SlaveTemplate(Base):
     sync_close = Column(Boolean, default=False)
     daily_loss_enabled = Column(Boolean, default=False)
     daily_loss_limit = Column(Float, default=0.0)
+    daily_loss_mode = Column(Enum(PnLMode), default=PnLMode.USD)
     daily_profit_enabled = Column(Boolean, default=False)
     daily_profit_limit = Column(Float, default=0.0)
+    daily_profit_mode = Column(Enum(PnLMode), default=PnLMode.USD)
     delay_sec = Column(Float, default=0.0)
     magic_number = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)

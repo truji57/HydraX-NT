@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const [closingAll, setClosingAll] = useState(false);
   const [slaveConfigs, setSlaveConfigs] = useState<Record<string, SlaveConfig>>({});
   const [templates, setTemplates] = useState<SlaveTemplate[]>([]);
-  const [slaveStats, setSlaveStats] = useState<Record<string, {unrealized: number; positions: number; balance: number; day_pnl: number}>>({});
+  const [slaveStats, setSlaveStats] = useState<Record<string, {unrealized: number; positions: number; balance: number; day_pnl: number; loss_limit_usd?: number; profit_limit_usd?: number}>>({});
 
   useEffect(() => {
     fetchStatus();
@@ -208,6 +208,11 @@ export default function DashboardPage() {
                         <span className="text-zinc-500 ml-1">
                           ({slaveStats[s.id].day_pnl >= 0 ? '+' : ''}{slaveStats[s.id].day_pnl.toFixed(2)})
                         </span>
+                        {(slaveStats[s.id].loss_limit_usd || slaveStats[s.id].profit_limit_usd) && (
+                          <span className="text-zinc-600 ml-2 text-[11px]">
+                            [Prot: {slaveStats[s.id].loss_limit_usd != null ? `-$${slaveStats[s.id].loss_limit_usd!.toFixed(0)}` : ''}{slaveStats[s.id].loss_limit_usd != null && slaveStats[s.id].profit_limit_usd != null ? ' | ' : ''}{slaveStats[s.id].profit_limit_usd != null ? `+$${slaveStats[s.id].profit_limit_usd!.toFixed(0)}` : ''}]
+                          </span>
+                        )}
                       </p>
                     )}
                     {slaveStats[s.id] && (
