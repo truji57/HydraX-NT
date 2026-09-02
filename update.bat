@@ -7,10 +7,7 @@ echo ============================
 echo.
 
 echo [1/3] Deteniendo servicios activos...
-taskkill /F /IM python.exe 2>nul
-taskkill /F /IM python3.exe 2>nul
-taskkill /F /IM node.exe 2>nul
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8005 ^| findstr LISTENING') do taskkill /F /PID %%a 2>nul
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8006 ^| findstr LISTENING') do taskkill /F /PID %%a 2>nul
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5173 ^| findstr LISTENING') do taskkill /F /PID %%a 2>nul
 timeout /t 4 /nobreak >nul
 echo       Listo.

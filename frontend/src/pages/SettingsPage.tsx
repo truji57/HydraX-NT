@@ -95,9 +95,9 @@ export default function SettingsPage() {
           <h3 className="text-sm font-medium text-white">Informacion</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-zinc-400">Version</span><span className="text-white">{version || '...'} {updateAvail && <span className="text-amber-400">(v{latestVer} disponible)</span>}</span></div>
-            <div className="flex justify-between"><span className="text-zinc-400">Backend</span><span className="text-emerald-400">http://localhost:8005</span></div>
+            <div className="flex justify-between"><span className="text-zinc-400">Backend</span><span className="text-emerald-400">http://localhost:8006</span></div>
             <div className="flex justify-between"><span className="text-zinc-400">Frontend</span><span className="text-emerald-400">http://localhost:5173</span></div>
-            <div className="flex justify-between"><span className="text-zinc-400">API Docs</span><a href="http://localhost:8005/docs" target="_blank" className="text-blue-400 hover:underline">Swagger UI</a></div>
+            <div className="flex justify-between"><span className="text-zinc-400">API Docs</span><a href="http://localhost:8006/docs" target="_blank" className="text-blue-400 hover:underline">Swagger UI</a></div>
           </div>
           <div className="pt-2 border-t border-zinc-700 space-y-2">
             <p className="text-xs text-zinc-500">Puerto del Bridge NT8</p>
