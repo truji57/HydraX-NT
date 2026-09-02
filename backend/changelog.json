@@ -1,5 +1,10 @@
 [
     {
+        "date":  "2026-09-02",
+        "description":  "Mover backend a puerto 8006 para coexistir con Q7 (backend de Q7 usa :8005); eliminar start_backend.bat; sacar setup.bat del repo e ignorar AGENTS.md/setup.bat",
+        "version":  "v1.48"
+    },
+    {
         "date":  "2026-07-09",
         "description":  "Fix: bridge SL/TP direction check + close debounce (1-cycle) previene cierres falsos en slaves al colocar ordenes LIMIT de entrada [Requiere recompilar el AddOn .cs: copiar bridge/NT8HydraX.cs a Documents\\NinjaTrader 8\\bin\\Custom\\AddOns\\ y F5 en NinjaScript Editor]",
         "version":  "v1.47"
