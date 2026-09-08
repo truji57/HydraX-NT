@@ -21,27 +21,48 @@ def list_accounts(role: str | None = None, db: Session = Depends(get_db)):
 
 @router.get("/nt8-available")
 def nt8_available(host: str = "localhost", port: int = 5555):
-    import socket
-    import json
-    names = []
-    try:
-        s = socket.socket()
-        s.settimeout(3)
-        s.connect((host, port))
-        s.sendall(json.dumps({"action": "ACCOUNTS"}).encode() + b"\n")
-        resp = b""
-        while b"\n" not in resp:
-            chunk = s.recv(4096)
-            if not chunk:
-                break
-            resp += chunk
-        s.close()
-        data = json.loads(resp.decode("utf-8-sig").strip())
-        if data.get("ok"):
-            names = [str(x) for x in data.get("accounts", [])]
-    except Exception:
-        names = []
-    return {"ok": True, "accounts": names}
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from app.engine.nt8_connector import NT8Connector
+
+    conn = NT8Connector(host, port)
+    names = conn.get_accounts()
+    if not names:
+        return {"ok": True, "accounts": []}
+
+    def active(name: str) -> bool:
+        try:
+            c = NT8Connector(host, port)
+            info = c.get_account(name)
+            c.disconnect()
+            if info and info.get("ok"):
+                balance = float(info.get("balance", 0) or 0)
+                positions = int(info.get("positions", 0) or 0)
+                realized = float(info.get("realized", 0) or 0)
+                unrealized = float(info.get("unrealized", 0) or 0)
+                if balance == 0 and positions == 0 and realized == 0 and unrealized == 0:
+                    return False
+            return True
+        except Exception:
+            return True
+
+    processed = set()
+    active_names = []
+    with ThreadPoolExecutor(max_workers=min(len(names), 8)) as executor:
+        futures = {executor.submit(active, n): n for n in names}
+        try:
+            for future in as_completed(futures, timeout=15):
+                name = futures[future]
+                processed.add(name)
+                try:
+                    if future.result(timeout=8):
+                        active_names.append(name)
+                except Exception:
+                    active_names.append(name)
+        except Exception:
+            pass
+
+    final = [n for n in names if n in active_names or n not in processed]
+    return {"ok": True, "accounts": final}
 
 
 @router.post("", response_model=AccountResponse, status_code=201)

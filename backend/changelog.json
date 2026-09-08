@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-09-08",
+        "description":  "Filtrar cuentas inactivas (balance 0 sin datos) del desplegable de cuentas NT8 al crear/editar master o slave",
+        "version":  "v1.54"
+    },
+    {
+        "date":  "2026-09-08",
         "description":  "Revertir campo connected (ConnectionStatus) del bridge, no existe en la API Cbi de NT8; la deteccion de cuentas inactivas queda via fallback del backend (balance 0 sin datos) sin recompilar el AddOn",
         "version":  "v1.53"
     },
