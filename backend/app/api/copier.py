@@ -19,6 +19,8 @@ def status(db: Session = Depends(get_db)):
         "active_slaves": state["active_slaves"],
         "total_positions": total,
         "workers": state.get("workers", {}),
+        "nt8_connected": state.get("nt8_connected", False),
+        "nt8_last_heartbeat": state.get("nt8_last_heartbeat"),
     }
 
 

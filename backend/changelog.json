@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-09-02",
+        "description":  "Indicadores de conexion en el sidebar: BACKEND (via WebSocket) y NT8 (sonda TCP heartbeat al bridge cada 3s) con punto de color, polling en vivo",
+        "version":  "v1.49"
+    },
+    {
+        "date":  "2026-09-02",
         "description":  "Mover backend a puerto 8006 para coexistir con Q7 (backend de Q7 usa :8005); eliminar start_backend.bat; sacar setup.bat del repo e ignorar AGENTS.md/setup.bat",
         "version":  "v1.48"
     },

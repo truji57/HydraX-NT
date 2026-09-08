@@ -37,7 +37,7 @@ export function Layout() {
         return;
     }
     if (text) addLog({ timestamp: msg.timestamp, message: text, type: msg.type });
-  });
+  }, (connected) => useStore.getState().setWsConnected(connected));
 
   return (
     <div className="flex h-screen overflow-hidden">

@@ -62,6 +62,8 @@ export interface CopierStatus {
   active_slaves: number;
   total_positions: number;
   workers: Record<string, { pid: number; alive: boolean }>;
+  nt8_connected: boolean;
+  nt8_last_heartbeat: number | null;
 }
 
 export interface WSMessage {

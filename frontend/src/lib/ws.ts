@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import type { WSMessage } from '../types';
 
-export function useWebSocket(onMessage: (msg: WSMessage) => void) {
+export function useWebSocket(onMessage: (msg: WSMessage) => void, onStatusChange?: (connected: boolean) => void) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>();
   const cbRef = useRef(onMessage);
   cbRef.current = onMessage;
+  const statusRef = useRef(onStatusChange);
+  statusRef.current = onStatusChange;
 
   useEffect(() => {
     let active = true;
@@ -18,7 +20,7 @@ export function useWebSocket(onMessage: (msg: WSMessage) => void) {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      ws.onopen = () => {};
+      ws.onopen = () => statusRef.current?.(true);
       ws.onmessage = (event) => {
         try {
           const msg: WSMessage = JSON.parse(event.data);
@@ -26,6 +28,7 @@ export function useWebSocket(onMessage: (msg: WSMessage) => void) {
         } catch {}
       };
       ws.onclose = () => {
+        statusRef.current?.(false);
         if (!active) return;
         reconnectTimeout.current = setTimeout(connect, 5000);
       };

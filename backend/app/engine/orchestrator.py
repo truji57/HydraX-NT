@@ -16,6 +16,12 @@ _active_masters = 0
 _active_slaves = 0
 _worker_status: dict[str, dict] = {}
 
+_last_nt8_heartbeat: float | None = None
+_heartbeat_probe_started = False
+_heartbeat_probe_lock = threading.Lock()
+
+NT8_HB_TIMEOUT = 6.0  # segundos sin respuesta del bridge = desconectado
+
 MAX_RESTARTS_PER_MINUTE = 3
 RESTART_WINDOW_SECONDS = 60
 
@@ -32,13 +38,38 @@ def get_copier_state():
     uptime = None
     if _copier_start_time:
         uptime = time.time() - _copier_start_time
+    nt8_connected = _last_nt8_heartbeat is not None and (time.time() - _last_nt8_heartbeat) < NT8_HB_TIMEOUT
     return {
         "running": _copier_running,
         "uptime_seconds": uptime,
         "active_masters": _active_masters,
         "active_slaves": _active_slaves,
         "workers": _worker_status.copy(),
+        "nt8_connected": nt8_connected,
+        "nt8_last_heartbeat": _last_nt8_heartbeat,
     }
+
+
+def _nt8_heartbeat_probe():
+    global _last_nt8_heartbeat
+    from app.engine.nt8_connector import NT8Connector
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                master = (db.query(Account)
+                          .filter(Account.role == "MASTER", Account.active == True)
+                          .order_by(Account.created_at.asc())
+                          .first())
+                if master:
+                    conn = NT8Connector(master.bridge_host, master.bridge_port)
+                    if conn.connect():
+                        _last_nt8_heartbeat = time.time()
+            finally:
+                db.close()
+        except Exception:
+            pass
+        time.sleep(3)
 
 
 class CopierOrchestrator:
@@ -414,8 +445,11 @@ _orch_lock = threading.Lock()
 
 
 def get_orchestrator() -> CopierOrchestrator:
-    global _orchestrator
+    global _orchestrator, _heartbeat_probe_started
     with _orch_lock:
         if _orchestrator is None:
             _orchestrator = CopierOrchestrator()
+        if not _heartbeat_probe_started:
+            _heartbeat_probe_started = True
+            threading.Thread(target=_nt8_heartbeat_probe, daemon=True).start()
         return _orchestrator

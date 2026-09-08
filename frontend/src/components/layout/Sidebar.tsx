@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, ArrowLeftRight, History, Settings, Play, Square, Layers } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -15,8 +15,14 @@ const links = [
 ];
 
 export function Sidebar() {
-  const { copierStatus, version, fetchStatus } = useStore();
+  const { copierStatus, wsConnected, version, fetchStatus } = useStore();
   const [starting, setStarting] = useState(false);
+
+  useEffect(() => {
+    fetchStatus();
+    const interval = setInterval(() => { fetchStatus(); }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleStartStop = async () => {
     if (copierStatus.running) {
@@ -57,6 +63,18 @@ export function Sidebar() {
           {copierStatus.running && copierStatus.uptime_seconds ? (
             <p className="text-xs text-zinc-500">{Math.floor(copierStatus.uptime_seconds / 60)}m {Math.floor(copierStatus.uptime_seconds % 60)}s</p>
           ) : null}
+        </div>
+        <div className="mb-3 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className={cn('inline-block h-2 w-2 rounded-full', wsConnected ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]' : 'bg-red-500 shadow-[0_0_6px_#ef4444]')} />
+            <span className={cn('text-[10px] font-medium', wsConnected ? 'text-emerald-400' : 'text-red-400')}>BACKEND</span>
+            <span className={cn('ml-auto text-[10px]', wsConnected ? 'text-zinc-500' : 'text-red-400/70')}>{wsConnected ? 'Activo' : 'Sin conexion'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={cn('inline-block h-2 w-2 rounded-full', copierStatus.nt8_connected ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]' : 'bg-red-500 shadow-[0_0_6px_#ef4444]')} />
+            <span className={cn('text-[10px] font-medium', copierStatus.nt8_connected ? 'text-emerald-400' : 'text-red-400')}>NT8</span>
+            <span className={cn('ml-auto text-[10px]', copierStatus.nt8_connected ? 'text-zinc-500' : 'text-red-400/70')}>{copierStatus.nt8_connected ? 'Conectado' : 'Desconectado'}</span>
+          </div>
         </div>
         <button onClick={handleStartStop} disabled={starting}
           className={cn('w-full flex items-center justify-center gap-2 py-3 rounded-md text-base font-semibold transition-colors',
