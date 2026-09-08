@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-09-02",
+        "description":  "Aviso en el dashboard cuando una cuenta configurada ya no existe en la conexion actual de NT8: tarjeta roja con overlay 'SIN CONEXION CON CUENTA' (campo connected por cuenta)",
+        "version":  "v1.51"
+    },
+    {
+        "date":  "2026-09-02",
         "description":  "Desplegable de cuentas NT8 disponibles al crear/editar master o slave (accion ACCOUNTS en el bridge) + modal de confirmacion al eliminar plantillas [Requiere recompilar el AddOn .cs]",
         "version":  "v1.50"
     },

@@ -80,6 +80,12 @@ class NT8Connector:
         resp = self._send({"action": "ACCOUNT", "account": account_name})
         return resp
 
+    def get_accounts(self) -> list[str]:
+        resp = self._send({"action": "ACCOUNTS"})
+        if resp and resp.get("ok"):
+            return [str(x) for x in resp.get("accounts", [])]
+        return []
+
     def get_positions(self, account_name: str = "") -> list[dict]:
         resp = self._send({"action": "POSITIONS", "account": account_name})
         if resp and resp.get("ok"):

@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const [closingAll, setClosingAll] = useState(false);
   const [slaveConfigs, setSlaveConfigs] = useState<Record<string, SlaveConfig>>({});
   const [templates, setTemplates] = useState<SlaveTemplate[]>([]);
-  const [slaveStats, setSlaveStats] = useState<Record<string, {unrealized: number; positions: number; balance: number; day_pnl: number; loss_limit_usd?: number; profit_limit_usd?: number}>>({});
+  const [slaveStats, setSlaveStats] = useState<Record<string, {unrealized: number; positions: number; balance: number; day_pnl: number; loss_limit_usd?: number; profit_limit_usd?: number; connected: boolean}>>({});
 
   useEffect(() => {
     fetchStatus();
@@ -29,7 +29,7 @@ export default function DashboardPage() {
 
   const fetchSlaveStats = async () => {
     try {
-      const resp = await api.get<{ok: boolean; data: Record<string, {unrealized: number; positions: number}>}>('/copier/dashboard');
+      const resp = await api.get<{ok: boolean; data: Record<string, {unrealized: number; positions: number; balance: number; day_pnl: number; loss_limit_usd?: number; profit_limit_usd?: number; connected: boolean}>}>('/copier/dashboard');
       if (resp.ok) setSlaveStats(resp.data);
     } catch {}
   };
@@ -140,8 +140,12 @@ export default function DashboardPage() {
       <div><h3 className="text-base font-medium text-zinc-400 mb-3">Cuentas Master <span className="text-emerald-400">({masters.length})</span></h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {masters.length === 0 && <p className="text-sm text-zinc-600 col-span-full">No hay cuentas master configuradas.</p>}
-          {masters.map(m => (
-            <Card key={m.id} className={`relative overflow-hidden ${copierStatus.running ? 'border-emerald-500/20' : ''} ${m.copy_enable === false ? 'opacity-60' : ''} ${(slaveStats[m.id]?.positions ?? 0) > 0 ? 'border-emerald-500/40' : ''}`}>
+          {masters.map(m => {
+            const mDc = slaveStats[m.id] && slaveStats[m.id].connected === false;
+            return (
+            <Card key={m.id} className={`relative overflow-hidden ${mDc ? 'border-red-500/60' : copierStatus.running ? 'border-emerald-500/20' : ''} ${m.copy_enable === false ? 'opacity-60' : ''} ${(slaveStats[m.id]?.positions ?? 0) > 0 ? 'border-emerald-500/40' : ''}`}>
+              {mDc && <div className="absolute inset-0 bg-red-900/30" />}
+              {mDc && <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><div className="bg-red-500/95 text-white text-xs font-bold px-3 py-1.5 rounded-md border border-red-300/40 shadow-[0_0_12px_rgba(239,68,68,0.6)]">SIN CONEXION CON CUENTA</div></div>}
               {copierStatus.running && m.copy_enable !== false && <div className="absolute inset-0 bg-emerald-500/5 animate-[pulse_3s_ease-in-out_infinite]" />}
               {(slaveStats[m.id]?.positions ?? 0) > 0 && <div className="absolute inset-0 bg-emerald-500/10 animate-[pulse_1.5s_ease-in-out_infinite] shadow-[inset_0_0_20px_rgba(34,197,94,0.15)]" />}
               <div className="relative"><CardHeader><div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full shrink-0" style={{backgroundColor: m.color || '#3b82f6', opacity: m.copy_enable === false ? 0.4 : 1}} /><CardTitle className={m.copy_enable === false ? 'text-zinc-500' : ''}>{m.name}</CardTitle></div><Badge variant="success">MASTER</Badge></CardHeader>
@@ -168,7 +172,8 @@ export default function DashboardPage() {
               )}
             </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -183,8 +188,11 @@ export default function DashboardPage() {
           {slaves.length === 0 && <p className="text-sm text-zinc-600 col-span-full">No hay cuentas slave configuradas.</p>}
           {slaves.map(s => {
             const autocopy = slaveConfigs[s.id]?.autocopy_enable ?? true;
+            const sDc = slaveStats[s.id] && slaveStats[s.id].connected === false;
             return (
-            <Card key={s.id} className={`relative overflow-hidden ${!autocopy ? 'opacity-60 border-amber-800/40' : copierStatus.running ? 'border-amber-500/20' : ''} ${(slaveStats[s.id]?.positions ?? 0) > 0 ? 'border-amber-500/40' : ''}`}>
+            <Card key={s.id} className={`relative overflow-hidden ${sDc ? 'border-red-500/60' : !autocopy ? 'opacity-60 border-amber-800/40' : copierStatus.running ? 'border-amber-500/20' : ''} ${(slaveStats[s.id]?.positions ?? 0) > 0 ? 'border-amber-500/40' : ''}`}>
+              {sDc && <div className="absolute inset-0 bg-red-900/30" />}
+              {sDc && <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><div className="bg-red-500/95 text-white text-xs font-bold px-3 py-1.5 rounded-md border border-red-300/40 shadow-[0_0_12px_rgba(239,68,68,0.6)]">SIN CONEXION CON CUENTA</div></div>}
               {copierStatus.running && autocopy && <div className="absolute inset-0 bg-amber-500/4 animate-[pulse_3s_ease-in-out_infinite]" />}
               {(slaveStats[s.id]?.positions ?? 0) > 0 && <div className="absolute inset-0 bg-amber-500/8 animate-[pulse_1.5s_ease-in-out_infinite] shadow-[inset_0_0_20px_rgba(245,158,11,0.12)]" />}
               <div className="relative flex flex-col sm:flex-row sm:justify-between sm:gap-3">

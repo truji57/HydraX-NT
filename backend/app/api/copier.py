@@ -93,17 +93,22 @@ def dashboard_stats():
     try:
         accounts = db.query(Account).filter(Account.active == True).all()
         result = {}
+        nt8_connected = get_copier_state().get("nt8_connected", False)
 
         def fetch(acc):
             try:
                 conn = NT8Connector(acc.bridge_host, acc.bridge_port)
                 info = conn.get_account(acc.login)
+                found = bool(info and info.get("ok"))
+                if not found and nt8_connected:
+                    available = set(conn.get_accounts())
+                    found = str(acc.login) in available
                 conn.disconnect()
-                if info and info.get("ok"):
+                if found:
                     realized = info.get("realized", 0)
                     unrealized = info.get("unrealized", 0)
                     balance = info.get("balance", 0)
-                    data = {"unrealized": unrealized, "positions": info.get("positions", 0), "balance": balance, "day_pnl": realized + unrealized}
+                    data = {"unrealized": unrealized, "positions": info.get("positions", 0), "balance": balance, "day_pnl": realized + unrealized, "connected": True}
 
                     if acc.role == "SLAVE":
                         sc = db.query(SlaveConfig).filter(SlaveConfig.account_id == acc.id).first()
@@ -119,9 +124,10 @@ def dashboard_stats():
                                 limit = day_start_balance * (limit / 100.0)
                             data["profit_limit_usd"] = limit
                     return acc.id, data
+                return acc.id, {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0, "connected": False}
             except Exception:
                 pass
-            return acc.id, {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0}
+            return acc.id, {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0, "connected": False}
 
         with ThreadPoolExecutor(max_workers=min(len(accounts), 10)) as executor:
             futures = {executor.submit(fetch, acc): acc.id for acc in accounts}
@@ -133,7 +139,7 @@ def dashboard_stats():
                     pass
             for acc in accounts:
                 if acc.id not in result:
-                    result[acc.id] = {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0}
+                    result[acc.id] = {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0, "connected": False}
 
         return {"ok": True, "data": result}
     finally:
