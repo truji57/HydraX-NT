@@ -5,7 +5,7 @@ export interface Account {
   id: string;
   name: string;
   role: AccountRole;
-  login: number;
+  login: string;
   bridge_host: string;
   bridge_port: number;
   poll_interval: number;

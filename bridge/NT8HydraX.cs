@@ -154,6 +154,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                         string response = "{}";
 
                         if (action == "ACCOUNT") response = GetAccountInfo(cmd);
+                        else if (action == "ACCOUNTS") response = GetAccounts();
                         else if (action == "POSITIONS") response = GetPositions(cmd);
                         else if (action == "ORDERS") response = GetOrders(cmd);
                         else if (action == "OPEN") response = OpenPosition(cmd);
@@ -239,6 +240,25 @@ namespace NinjaTrader.NinjaScript.AddOns
                         _idToKey.Remove(id);
                     }
                 }
+            }
+        }
+
+        private string GetAccounts()
+        {
+            try
+            {
+                var names = new List<string>();
+                foreach (var a in Account.All)
+                {
+                    if (!string.IsNullOrEmpty(a.Name))
+                        names.Add(a.Name);
+                }
+                var result = new Dictionary<string, object> { ["ok"] = true, ["accounts"] = names };
+                return _json.Serialize(result);
+            }
+            catch (Exception ex)
+            {
+                return "{\"ok\":false,\"error\":\"" + ex.Message.Replace("\"", "'") + "\"}";
             }
         }
 

@@ -19,6 +19,31 @@ def list_accounts(role: str | None = None, db: Session = Depends(get_db)):
     return get_accounts(db, role=role)
 
 
+@router.get("/nt8-available")
+def nt8_available(host: str = "localhost", port: int = 5555):
+    import socket
+    import json
+    names = []
+    try:
+        s = socket.socket()
+        s.settimeout(3)
+        s.connect((host, port))
+        s.sendall(json.dumps({"action": "ACCOUNTS"}).encode() + b"\n")
+        resp = b""
+        while b"\n" not in resp:
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            resp += chunk
+        s.close()
+        data = json.loads(resp.decode("utf-8-sig").strip())
+        if data.get("ok"):
+            names = [str(x) for x in data.get("accounts", [])]
+    except Exception:
+        names = []
+    return {"ok": True, "accounts": names}
+
+
 @router.post("", response_model=AccountResponse, status_code=201)
 def create(account: AccountCreate, db: Session = Depends(get_db)):
     return create_account(db, account)

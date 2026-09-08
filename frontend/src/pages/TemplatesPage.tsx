@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 import type { SlaveTemplate } from '../types';
-import { Plus, Trash2, X, Edit3, Copy } from 'lucide-react';
+import { Plus, Trash2, X, Edit3, Copy, AlertTriangle } from 'lucide-react';
 
 const emptyTemplate: Omit<SlaveTemplate, 'id' | 'created_at' | 'updated_at'> = {
   name: '',
@@ -48,6 +48,7 @@ export default function TemplatesPage() {
   const [editing, setEditing] = useState<SlaveTemplate | null>(null);
   const [form, setForm] = useState(emptyTemplate);
   const [showNewForm, setShowNewForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SlaveTemplate | null>(null);
 
   useEffect(() => { fetchTemplates(); }, []);
 
@@ -70,8 +71,9 @@ export default function TemplatesPage() {
     } catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error', 'error'); }
   };
 
-  const handleDelete = async (id: string) => {
-    try { await api.delete(`/templates/${id}`); showToast('Eliminada', 'ok'); fetchTemplates(); }
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try { await api.delete(`/templates/${deleteTarget.id}`); showToast('Eliminada', 'ok'); fetchTemplates(); setDeleteTarget(null); }
     catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error', 'error'); }
   };
 
@@ -170,7 +172,7 @@ export default function TemplatesPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => editTemplate(t)} disabled={copierRunning} title={copierRunning ? 'Para el copiador para editar' : ''}><Edit3 size={14} /></Button>
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(t.id)} disabled={copierRunning} title={copierRunning ? 'Para el copiador para eliminar' : ''}><Trash2 size={14} className="text-red-400" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(t)} disabled={copierRunning} title={copierRunning ? 'Para el copiador para eliminar' : ''}><Trash2 size={14} className="text-red-400" /></Button>
               </div>
             </Card>
             {editing?.id === t.id && (
@@ -233,6 +235,25 @@ export default function TemplatesPage() {
         ))}
         {templates.length === 0 && <p className="text-sm text-zinc-600 py-4 text-center">No hay plantillas. Crea una para empezar.</p>}
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <Card className="w-[420px] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-red-400 flex items-center gap-2"><AlertTriangle size={20} /> Eliminar Plantilla</h3>
+              <button onClick={() => setDeleteTarget(null)} className="text-zinc-500 hover:text-white"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-zinc-400 mb-2">Vas a eliminar permanentemente la plantilla:</p>
+            <p className="text-sm font-medium text-white mb-1">{deleteTarget.name}</p>
+            <p className="text-xs text-zinc-500 mb-4">({riskLabels[deleteTarget.risk_mode] || deleteTarget.risk_mode}) {deleteTarget.fixed_contracts} contr | max {deleteTarget.max_contracts} | x{deleteTarget.lot_multiplier}</p>
+            <p className="text-xs text-red-400 mb-4">Esta accion no se puede deshacer.</p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+              <Button variant="danger" size="sm" onClick={handleConfirmDelete}>Eliminar</Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input, Select, Label, Checkbox, DecimalInput } from '../components/ui/input';
 import { Card } from '../components/ui/card';
@@ -14,7 +14,7 @@ const emptyForm: AccountForm = {
   poll_interval: 0.5, active: true, color: '#3b82f6',
 };
 
-function AccountGroup({ label, accounts, editing, form, setForm, onTest, testing, testResults, copierRunning, allAccounts, onEdit, onDeleteClick, onSave, onCancel }: {
+function AccountGroup({ label, accounts, editing, form, setForm, onTest, testing, testResults, copierRunning, allAccounts, loginOptions, manualLogin, setManualLogin, onEdit, onDeleteClick, onSave, onCancel }: {
   label: string;
   accounts: Account[];
   editing: Account | null;
@@ -25,6 +25,9 @@ function AccountGroup({ label, accounts, editing, form, setForm, onTest, testing
   testResults: Record<string, TestResult>;
   copierRunning: boolean;
   allAccounts: Account[];
+  loginOptions: string[];
+  manualLogin: boolean;
+  setManualLogin: (v: boolean) => void;
   onEdit: (a: Account) => void;
   onDeleteClick: (a: Account) => void;
   onSave: () => void;
@@ -72,7 +75,7 @@ function AccountGroup({ label, accounts, editing, form, setForm, onTest, testing
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><Label>Nombre</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
                 <div><Label>Rol</Label><Select value={form.role} onChange={e => setForm({...form, role: e.target.value as 'MASTER'|'SLAVE'})}><option value="MASTER">MASTER</option><option value="SLAVE">SLAVE</option></Select></div>
-                <div><Label>Cuenta NT8</Label><Input value={form.login||''} onChange={e => setForm({...form, login: e.target.value})} placeholder="Nombre exacto en NT8 (Sim101...)" /></div>
+                <div><Label>Cuenta NT8</Label><Select value={manualLogin ? '__manual__' : (form.login || '')} onChange={e => { const v = e.target.value; if (v === '__manual__') { setManualLogin(true); setForm({...form, login: ''}); } else { setManualLogin(false); setForm({...form, login: v}); } }}><option value="" disabled>Selecciona una cuenta...</option>{loginOptions.map(o => <option key={o} value={o}>{o}</option>)}<option value="__manual__">Escribir manualmente...</option></Select>{manualLogin && <Input className="mt-2" value={form.login} onChange={e => setForm({...form, login: e.target.value})} placeholder="Nombre exacto en NT8 (Sim101...)" />}{loginOptions.length === 0 && !manualLogin && <p className="text-[11px] text-zinc-500 mt-1">No hay cuentas nuevas disponibles (todas ya creadas o NT8 sin responder).</p>}</div>
                 <div><Label>Bridge Host</Label><Input value={form.bridge_host} onChange={e => setForm({...form, bridge_host: e.target.value})} /></div>
                 <div><Label>Bridge Port</Label><Input type="number" value={form.bridge_port} onChange={e => setForm({...form, bridge_port: Number(e.target.value)})} /></div>
                 <div><Label>Poll Interval (s)</Label><DecimalInput value={form.poll_interval} onChange={v => setForm({...form, poll_interval: v})} /></div>
@@ -99,10 +102,12 @@ export default function AccountsPage() {
   const [editing, setEditing] = useState<Account | null>(null);
   const [form, setForm] = useState<AccountForm>(emptyForm);
   const [showNewForm, setShowNewForm] = useState(false);
+  const [manualLogin, setManualLogin] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
   const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
   const [defaultPort, setDefaultPort] = useState(5555);
+  const [nt8Accounts, setNt8Accounts] = useState<string[]>([]);
 
   useEffect(() => {
     fetchAccounts();
@@ -112,7 +117,31 @@ export default function AccountsPage() {
       .catch(() => {});
   }, []);
 
-  const resetForm = () => { setForm({ ...emptyForm, bridge_port: defaultPort }); setEditing(null); setShowNewForm(false); };
+  const fetchNt8Accounts = async (host: string, port: number) => {
+    try {
+      const r = await api.get<{ok: boolean; accounts: string[]}>(`/accounts/nt8-available?host=${encodeURIComponent(host)}&port=${port}`);
+      setNt8Accounts(r.ok ? r.accounts : []);
+    } catch { setNt8Accounts([]); }
+  };
+
+  useEffect(() => {
+    if (!showNewForm && !editing) return;
+    const t = setTimeout(() => fetchNt8Accounts(form.bridge_host, form.bridge_port), 300);
+    return () => clearTimeout(t);
+  }, [form.bridge_host, form.bridge_port, showNewForm, editing]);
+
+  const usedLogins = useMemo(
+    () => new Set(accounts.filter(a => (editing ? a.id !== editing.id : true)).map(a => String(a.login))),
+    [accounts, editing]
+  );
+
+  const loginOptions = useMemo(() => {
+    const opts = nt8Accounts.filter(a => !usedLogins.has(a));
+    if (editing && editing.login && !opts.includes(String(editing.login))) return [String(editing.login), ...opts];
+    return opts;
+  }, [nt8Accounts, usedLogins, editing]);
+
+  const resetForm = () => { setForm({ ...emptyForm, bridge_port: defaultPort }); setEditing(null); setShowNewForm(false); setManualLogin(false); };
 
   const handleSubmit = async () => {
     try {
@@ -147,10 +176,11 @@ export default function AccountsPage() {
   const editAccount = (a: Account) => {
     setEditing(a);
     setShowNewForm(false);
+    setManualLogin(false);
     setForm({ name: a.name, role: a.role, login: a.login, bridge_host: a.bridge_host, bridge_port: a.bridge_port, poll_interval: a.poll_interval, active: a.active, color: a.color || '#3b82f6' });
   };
 
-  const openNew = (role: Account['role']) => { setEditing(null); setForm({ ...emptyForm, role, bridge_port: defaultPort }); setShowNewForm(true); };
+  const openNew = (role: Account['role']) => { setEditing(null); setForm({ ...emptyForm, role, bridge_port: defaultPort }); setShowNewForm(true); setManualLogin(false); };
 
   return (
     <div className="space-y-6">
@@ -171,7 +201,7 @@ export default function AccountsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><Label>Nombre</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
             <div><Label>Rol</Label><Select value={form.role} onChange={e => setForm({...form, role: e.target.value as 'MASTER'|'SLAVE'})}><option value="MASTER">MASTER</option><option value="SLAVE">SLAVE</option></Select></div>
-            <div><Label>Cuenta NT8</Label><Input value={form.login||''} onChange={e => setForm({...form, login: e.target.value})} placeholder="Nombre exacto en NT8 (Sim101...)" /></div>
+            <div><Label>Cuenta NT8</Label><Select value={manualLogin ? '__manual__' : (form.login || '')} onChange={e => { const v = e.target.value; if (v === '__manual__') { setManualLogin(true); setForm({...form, login: ''}); } else { setManualLogin(false); setForm({...form, login: v}); } }}><option value="" disabled>Selecciona una cuenta...</option>{loginOptions.map(o => <option key={o} value={o}>{o}</option>)}<option value="__manual__">Escribir manualmente...</option></Select>{manualLogin && <Input className="mt-2" value={form.login} onChange={e => setForm({...form, login: e.target.value})} placeholder="Nombre exacto en NT8 (Sim101...)" />}{loginOptions.length === 0 && !manualLogin && <p className="text-[11px] text-zinc-500 mt-1">No hay cuentas nuevas disponibles (todas ya creadas o NT8 sin responder).</p>}</div>
             <div><Label>Bridge Host</Label><Input value={form.bridge_host} onChange={e => setForm({...form, bridge_host: e.target.value})} /></div>
             <div><Label>Bridge Port</Label><Input type="number" value={form.bridge_port} onChange={e => setForm({...form, bridge_port: Number(e.target.value)})} /></div>
             <div><Label>Poll Interval (s)</Label><DecimalInput value={form.poll_interval} onChange={v => setForm({...form, poll_interval: v})} /></div>
@@ -199,6 +229,9 @@ export default function AccountsPage() {
           testResults={testResults}
           copierRunning={copierRunning}
           allAccounts={accounts}
+          loginOptions={loginOptions}
+          manualLogin={manualLogin}
+          setManualLogin={setManualLogin}
           onEdit={editAccount}
           onDeleteClick={setDeleteTarget}
           onSave={handleSubmit}
@@ -218,6 +251,9 @@ export default function AccountsPage() {
           testResults={testResults}
           copierRunning={copierRunning}
           allAccounts={accounts}
+          loginOptions={loginOptions}
+          manualLogin={manualLogin}
+          setManualLogin={setManualLogin}
           onEdit={editAccount}
           onDeleteClick={setDeleteTarget}
           onSave={handleSubmit}

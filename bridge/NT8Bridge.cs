@@ -74,6 +74,9 @@ namespace HydraXNT
                         case "ACCOUNT":
                             response = "{\"ok\":true,\"message\":\"Bridge ready\"}";
                             break;
+                        case "ACCOUNTS":
+                            response = "{\"ok\":true,\"accounts\":[\"Sim101\"]}";
+                            break;
                         case "POSITIONS":
                             response = "{\"ok\":true,\"positions\":[]}";
                             break;
