@@ -1,5 +1,10 @@
 [
     {
+        "date":  "2026-09-08",
+        "description":  "Revertir campo connected (ConnectionStatus) del bridge, no existe en la API Cbi de NT8; la deteccion de cuentas inactivas queda via fallback del backend (balance 0 sin datos) sin recompilar el AddOn",
+        "version":  "v1.53"
+    },
+    {
         "date":  "2026-09-07",
         "description":  "Detectar cuentas inactivas en el dashboard: campo connected en el bridge (ConnectionStatus real de NT8) + fallback en backend para cuentas balance 0 sin datos; tarjeta roja 'SIN CONEXION CON CUENTA' [Requiere recompilar el AddOn .cs]",
         "version":  "v1.52"
