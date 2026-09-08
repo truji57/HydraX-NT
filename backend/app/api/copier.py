@@ -105,25 +105,32 @@ def dashboard_stats():
                     found = str(acc.login) in available
                 conn.disconnect()
                 if found:
-                    realized = info.get("realized", 0)
-                    unrealized = info.get("unrealized", 0)
-                    balance = info.get("balance", 0)
-                    data = {"unrealized": unrealized, "positions": info.get("positions", 0), "balance": balance, "day_pnl": realized + unrealized, "connected": True}
+                    realized = float(info.get("realized", 0) or 0)
+                    unrealized = float(info.get("unrealized", 0) or 0)
+                    balance = float(info.get("balance", 0) or 0)
+                    positions = int(info.get("positions", 0) or 0)
+                    conn_flag = info.get("connected")
+                    if conn_flag is None:
+                        active = not (balance == 0 and unrealized == 0 and realized == 0 and positions == 0)
+                    else:
+                        active = bool(conn_flag)
+                    if active:
+                        data = {"unrealized": unrealized, "positions": positions, "balance": balance, "day_pnl": realized + unrealized, "connected": True}
 
-                    if acc.role == "SLAVE":
-                        sc = db.query(SlaveConfig).filter(SlaveConfig.account_id == acc.id).first()
-                        day_start_balance = balance - (realized + unrealized)
-                        if sc and sc.daily_loss_enabled:
-                            limit = sc.daily_loss_limit or 0
-                            if sc.daily_loss_mode and sc.daily_loss_mode.value == "PERCENT":
-                                limit = day_start_balance * (limit / 100.0)
-                            data["loss_limit_usd"] = limit
-                        if sc and sc.daily_profit_enabled:
-                            limit = sc.daily_profit_limit or 0
-                            if sc.daily_profit_mode and sc.daily_profit_mode.value == "PERCENT":
-                                limit = day_start_balance * (limit / 100.0)
-                            data["profit_limit_usd"] = limit
-                    return acc.id, data
+                        if acc.role == "SLAVE":
+                            sc = db.query(SlaveConfig).filter(SlaveConfig.account_id == acc.id).first()
+                            day_start_balance = balance - (realized + unrealized)
+                            if sc and sc.daily_loss_enabled:
+                                limit = sc.daily_loss_limit or 0
+                                if sc.daily_loss_mode and sc.daily_loss_mode.value == "PERCENT":
+                                    limit = day_start_balance * (limit / 100.0)
+                                data["loss_limit_usd"] = limit
+                            if sc and sc.daily_profit_enabled:
+                                limit = sc.daily_profit_limit or 0
+                                if sc.daily_profit_mode and sc.daily_profit_mode.value == "PERCENT":
+                                    limit = day_start_balance * (limit / 100.0)
+                                data["profit_limit_usd"] = limit
+                        return acc.id, data
                 return acc.id, {"unrealized": 0, "positions": 0, "balance": 0, "day_pnl": 0, "connected": False}
             except Exception:
                 pass

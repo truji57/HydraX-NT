@@ -1,5 +1,10 @@
 [
     {
+        "date":  "2026-09-07",
+        "description":  "Detectar cuentas inactivas en el dashboard: campo connected en el bridge (ConnectionStatus real de NT8) + fallback en backend para cuentas balance 0 sin datos; tarjeta roja 'SIN CONEXION CON CUENTA' [Requiere recompilar el AddOn .cs]",
+        "version":  "v1.52"
+    },
+    {
         "date":  "2026-09-02",
         "description":  "Aviso en el dashboard cuando una cuenta configurada ya no existe en la conexion actual de NT8: tarjeta roja con overlay 'SIN CONEXION CON CUENTA' (campo connected por cuenta)",
         "version":  "v1.51"

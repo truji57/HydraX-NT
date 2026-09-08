@@ -267,6 +267,8 @@ namespace NinjaTrader.NinjaScript.AddOns
             var acc = GetAccount(cmd);
             if (acc == null) return "{\"ok\":false,\"error\":\"No account\"}";
 
+            bool connected = acc.Connection != null && acc.Connection.ConnectionStatus == ConnectionStatus.Connected;
+
             try
             {
                 double pnl = 0;
@@ -281,12 +283,13 @@ namespace NinjaTrader.NinjaScript.AddOns
                     ["positions"] = acc.Positions.Count(p => p.Quantity != 0),
                     ["unrealized"] = pnl,
                     ["realized"] = realized,
+                    ["connected"] = connected,
                 };
                 return _json.Serialize(data);
             }
             catch
             {
-                return "{\"ok\":true,\"name\":\"" + acc.Name + "\"}";
+                return "{\"ok\":true,\"name\":\"" + acc.Name + "\",\"connected\":" + (connected ? "true" : "false") + "}";
             }
         }
 
