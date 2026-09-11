@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useStore } from '../../store';
 import { useWebSocket } from '../../lib/ws';
+import { formatEvent } from '../../lib/events';
 import type { WSMessage } from '../../types';
 import { X, Menu } from 'lucide-react';
 
@@ -10,33 +11,13 @@ export function Layout() {
   const { toast, clearToast, addLog } = useStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  useEffect(() => { useStore.getState().fetchLogs(); }, []);
+
   useWebSocket((msg: WSMessage) => {
-    const d = msg.data as Record<string, unknown>;
-    let text = '';
-    switch (msg.type) {
-      case 'position_open':
-        text = `${d.master || ''}: ${d.direction} ${d.contracts || d.volume}x ${d.symbol} (ticket ${d.ticket})`;
-        break;
-      case 'position_close':
-        text = `${d.master || ''}: cerrada ${d.symbol} (ticket ${d.ticket})`;
-        break;
-      case 'position_modify':
-        text = `${d.master || ''}: SL/TP modificado ${d.symbol} (ticket ${d.ticket})`;
-        break;
-      case 'copy_ok':
-        text = `${d.slave || ''}: ${d.action} OK ${d.symbol} ${d.contracts || ''} (master_ticket ${d.master_ticket})`;
-        break;
-      case 'copy_error':
-        text = `${d.slave || ''}: ${d.action} ERROR ${d.symbol} - ${d.error || 'unknown'}`;
-        break;
-      case 'worker_error':
-        text = `ERROR: ${d.worker || ''} - ${d.error || 'sin conexion'}`;
-        useStore.getState().showToast(text, 'error');
-        break;
-      default:
-        return;
-    }
-    if (text) addLog({ timestamp: msg.timestamp, message: text, type: msg.type });
+    const text = formatEvent(msg.type, msg.data as Record<string, unknown>);
+    if (!text) return;
+    if (msg.type === 'worker_error') useStore.getState().showToast(text, 'error');
+    addLog({ timestamp: msg.timestamp, message: text, type: msg.type });
   }, (connected) => useStore.getState().setWsConnected(connected));
 
   return (

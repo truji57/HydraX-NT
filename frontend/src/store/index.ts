@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
+import { formatEvent } from '../lib/events';
 import type { Account, CopierStatus } from '../types';
 
 interface LogEntry { timestamp: string; message: string; type: string; }
@@ -9,6 +10,7 @@ interface AppState {
   wsConnected: boolean;
   toast: { message: string; type: 'ok' | 'error' | 'info' } | null;
   fetchStatus: () => Promise<void>; fetchAccounts: () => Promise<void>;
+  fetchLogs: () => Promise<void>;
   addLog: (entry: LogEntry) => void;
   setWsConnected: (connected: boolean) => void;
   showToast: (message: string, type?: 'ok' | 'error' | 'info') => void;
@@ -35,6 +37,16 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addLog: (entry) => set(state => ({ logs: [entry, ...state.logs].slice(0, MAX_LOGS) })),
+
+  fetchLogs: async () => {
+    try {
+      const list = await api.get<{ id: string; timestamp: string; type: string; data: Record<string, unknown> }[]>('/events?limit=100');
+      const logs = list
+        .map(e => ({ timestamp: e.timestamp, message: formatEvent(e.type, e.data || {}), type: e.type }))
+        .filter(l => l.message);
+      set({ logs });
+    } catch {}
+  },
 
   setWsConnected: (connected) => set({ wsConnected: connected }),
 

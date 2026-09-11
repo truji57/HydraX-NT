@@ -363,12 +363,30 @@ class CopierOrchestrator:
     def _broadcast_events(self):
         import asyncio
         from app.ws.manager import manager as ws_manager
+        from app.models.event_log import EventLog
+        from app.database import SessionLocal
         loop = asyncio.new_event_loop()
         while self._running:
             try:
                 event = self._event_queue.get(timeout=1)
                 if event is None:
                     continue
+                try:
+                    db = SessionLocal()
+                    try:
+                        db.add(EventLog(type=event["type"], data=event.get("data", {})))
+                        db.commit()
+                        EventLog_MAX = 1000
+                        old_ids = [r.id for r in db.query(EventLog.id)
+                                   .order_by(EventLog.timestamp.desc())
+                                   .offset(EventLog_MAX).all()]
+                        if old_ids:
+                            db.query(EventLog).filter(EventLog.id.in_(old_ids)).delete(synchronize_session=False)
+                            db.commit()
+                    finally:
+                        db.close()
+                except Exception:
+                    pass
                 try:
                     loop.run_until_complete(ws_manager.broadcast(event["type"], event.get("data", {})))
                 except Exception:
