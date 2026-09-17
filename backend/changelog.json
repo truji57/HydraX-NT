@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-09-17",
+        "description":  "Nombre de ventana en las consolas de HydraX: start.bat (HydraX-NT Backend / Frontend con title) y update.bat (Actualizacion)",
+        "version":  "v1.57"
+    },
+    {
+        "date":  "2026-09-17",
         "description":  "Fix copias perdidas tras reiniciar un worker slave: reutilizar la cola mp.Queue (no la cierra/sustituye), log SKIP cuando autocopy esta pausado, y arreglo del 500 en /api/trades/positions",
         "version":  "v1.56"
     },

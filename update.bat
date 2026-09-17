@@ -1,4 +1,5 @@
 @echo off
+title HydraX-NT - Actualizacion
 cd /d "%~dp0"
 
 echo ============================
