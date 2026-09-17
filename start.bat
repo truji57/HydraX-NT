@@ -14,7 +14,7 @@ timeout /t 2 /nobreak >nul
 
 start "HydraX-NT Backend" cmd /k "title HydraX-NT Backend && cd /d %~dp0backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8006"
 timeout /t 3 /nobreak >nul
-start "HydraX-NT Frontend" cmd /k "title HydraX-NT Frontend && cd /d %~dp0frontend && npx vite --host 0.0.0.0 --port 5173"
+start "HydraX-NT Frontend" cmd /k "title HydraX-NT Frontend && set NODE_OPTIONS=--title=HydraX-NT-Frontend && cd /d %~dp0frontend && npx vite --host 0.0.0.0 --port 5173"
 timeout /t 2 /nobreak >nul
 start http://localhost:5173
 

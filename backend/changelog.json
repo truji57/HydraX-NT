@@ -1,6 +1,11 @@
 [
     {
         "date":  "2026-09-17",
+        "description":  "Mantener el nombre de la ventana del frontend aunque corra vite/node: NODE_OPTIONS=--title=HydraX-NT-Frontend en start.bat",
+        "version":  "v1.58"
+    },
+    {
+        "date":  "2026-09-17",
         "description":  "Nombre de ventana en las consolas de HydraX: start.bat (HydraX-NT Backend / Frontend con title) y update.bat (Actualizacion)",
         "version":  "v1.57"
     },
