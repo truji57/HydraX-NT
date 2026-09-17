@@ -320,18 +320,14 @@ class CopierOrchestrator:
 
         logger.info(f"Restarting slave: {cfg.get('name', account_id)} (attempt {len(self._restart_timestamps.get(account_id, deque()))})")
 
-        q = mp.Queue(maxsize=100)
         stop_flag = mp.Event()
 
-        if account_id in self._slave_queues:
-            old_q = self._slave_queues[account_id]
-            try:
-                old_q.close()
-                old_q.join_thread()
-            except Exception:
-                pass
-
+        # Reutilizar la cola existente: los master monitors guardan una referencia
+        # (serializada al spawn) y si se cierra/sustituye, los nuevos comandos se
+        # pierden en silencio. Reutilizar el mismo objeto mantiene los masters validos.
+        q = self._slave_queues.get(account_id) or mp.Queue(maxsize=100)
         self._slave_queues[account_id] = q
+
         self._slave_stop_flags[account_id] = stop_flag
 
         try:

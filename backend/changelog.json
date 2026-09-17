@@ -1,5 +1,10 @@
 [
     {
+        "date":  "2026-09-17",
+        "description":  "Fix copias perdidas tras reiniciar un worker slave: reutilizar la cola mp.Queue (no la cierra/sustituye), log SKIP cuando autocopy esta pausado, y arreglo del 500 en /api/trades/positions",
+        "version":  "v1.56"
+    },
+    {
         "date":  "2026-09-08",
         "description":  "Persistir los Eventos recientes en BD (modelo event_log + endpoint /api/events + poda a 1000) para que no se pierdan al cambiar de navegador o dispositivo",
         "version":  "v1.55"

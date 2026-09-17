@@ -54,6 +54,23 @@ def get_positions(db, slave_id=None, status="OPEN"):
     return query.order_by(desc(TicketMap.created_at)).all()
 
 
-@router.get("/positions", response_model=list)
+@router.get("/positions")
 def list_positions(slave_id: str | None = None, status: str = "OPEN", db: Session = Depends(get_db)):
-    return get_positions(db, slave_id, status)
+    rows = get_positions(db, slave_id, status)
+    return [
+        {
+            "id": r.id,
+            "master_ticket": r.master_ticket,
+            "slave_ticket": r.slave_ticket,
+            "master_account_id": r.master_account_id,
+            "slave_account_id": r.slave_account_id,
+            "symbol": r.symbol,
+            "volume": r.volume,
+            "price_open": r.price_open,
+            "direction": r.direction.value if r.direction else None,
+            "status": r.status.value if r.status else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "closed_at": r.closed_at.isoformat() if r.closed_at else None,
+        }
+        for r in rows
+    ]
